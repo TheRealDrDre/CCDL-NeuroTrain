@@ -1,3 +1,0 @@
-## ----
-## Python app for neurofeedback
-
