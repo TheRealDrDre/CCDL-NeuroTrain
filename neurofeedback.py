@@ -1,11 +1,13 @@
 ## ----
-## Python app for neurofeedback
+## Python GUI for neurofeedback
 
+from threading import Thread
 import ctypes
 import sys
 import os
 from ctypes import *
 from numpy import *
+from variables import *
 import time
 from ctypes.util import find_library
 
@@ -14,28 +16,45 @@ print ctypes.util.find_library('edk.dll')
 print os.path.exists('.\\edk.dll')
 libEDK = cdll.LoadLibrary(".\\edk.dll")
 
-ED_COUNTER = 0
-ED_INTERPOLATED=1
-ED_RAW_CQ=2
-ED_AF3=3
-ED_F7=4
-ED_F3=5
-ED_FC5=6
-ED_T7=7
-ED_P7=8
-ED_O1=9
-ED_O2=10
-ED_P8=11
-ED_T8=12
-ED_FC6=13
-ED_F4=14
-ED_F8=15
-ED_AF4=16
-ED_GYROX=17
-ED_GYROY=18
-ED_TIMESTAMP=19
-ED_ES_TIMESTAMP=20
-ED_FUNC_ID=21
-ED_FUNC_VALUE=22
-ED_MARKER=23
-ED_SYNC_SIGNAL=24
+# Here a thread that collects data
+
+class Emotiv ():
+    #code
+    def __init__(self ):
+        self._connected = False
+    
+    @property
+    def connected(self):
+        return self._connected
+    
+    @connected.setter
+    def connected(self, bool):
+        if self.connected() == bool
+            # If trying to connect while connected, or trying
+            # to disconnect while disconnected, do nothing
+            pass            
+        else:
+            if bool:
+                # If trying to connect while disconnected, then
+                # attempt to connect to an Emotive engine
+                conn = libEDK.EE_EngineConnect("Emotiv Systems-5")
+                
+                # If the result is 0, the connection was successful.
+                # If not, we failed, and we need to set connected back
+                # to False
+                if conn == 0:
+                    self._connected = True
+                else:
+                    self._connected = False
+            else:
+    
+    if libEDK.EE_EngineConnect("Emotiv Systems-5") != 0:
+        print "Emotiv Engine start up failed."
+    
+
+
+class EEG_Sampler( Thread ):
+    """A class that samples EEG data from the Emotive set at a given precision"""
+    def __init__(self, rate = 1000):
+        self.rate = rate
+    
