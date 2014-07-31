@@ -11,13 +11,11 @@ from variables import *
 import time
 from ctypes.util import find_library
 
-
 print ctypes.util.find_library('edk.dll')  
 print os.path.exists('.\\edk.dll')
 libEDK = cdll.LoadLibrary(".\\edk.dll")
 
 # Here a thread that collects data
-
 
 class EmotivManager ():
     #code
@@ -104,7 +102,6 @@ class EmotivManager ():
                 self._sampler.start()
                 # Here we start the thread
                 
-
         
     def Sample(self):
         if self.sampling:
