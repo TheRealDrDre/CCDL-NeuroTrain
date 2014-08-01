@@ -5,7 +5,6 @@
 import wx
 from manager import EmotivManager
 
-# As of now, it does nothing at all
 
 class ManagerWrapper(object):
     """An object that contains an EmotivManager"""
@@ -34,48 +33,111 @@ class ManagerWrapper(object):
 #
 class ConnectPanel(wx.Panel, ManagerWrapper):
     """A Simple Panel that Connects or Disconnects to an Emotiv System"""
-    def __init__(self, parent):
+    def __init__(self, parent, manager):
         wx.Panel.__init__(self, parent, -1,
                          style=wx.NO_FULL_REPAINT_ON_RESIZE)
+        ManagerWrapper.__init__(self, manager)
         self.create_objects()
         self.do_layout()
+        self.refresh()
     
     def create_objects(self):
         """Creates the internal objects"""
-        self.edk_connect_btn = wx.Button(self, 12, "Connect to the Headset", (20, 20))
-        self.edk_disconnect_btn = wx.Button(self, 11, "Disconnect from Headset", (20, 20))
+        self.connect_btn = wx.Button(self, 12, "Connect to the Headset", (20, 20))
+        self.disconnect_btn = wx.Button(self, 11, "Disconnect from Headset", (20, 20))
+        
+        spin = wx.SpinCtrlDouble(self, -1, min=1.0, max=100.0, inc=0.1)
+        spin.SetValue(1.0)
+        
+        text = wx.StaticText(self, -1,
+                            "Sampling interval (in seconds)",
+                            (45, 15))
+        self.sampling_interval_spn = spin
+        self.sampling_interval_lbl = text
+        
+        spin = wx.SpinCtrl(self, -1)
+        spin.SetRange(1, 100)
+        spin.SetValue(1)
+        
+        text = wx.StaticText(self, -1,
+                            "Quality Check Interval (in seconds)",
+                            (45, 15))
+        
+        self.quality_check_interval_spn = spin
+        self.quality_check_interval_lbl = text
+        
     
     def do_layout(self):
         """Lays out the components"""
                  
-        self.Bind(wx.EVT_BUTTON, self.on_connect, self.edk_connect_btn)
-        self.edk_connect_btn.SetDefault()
-        self.edk_connect_btn.SetSize(self.edk_connect_btn.GetBestSize())
+        self.Bind(wx.EVT_BUTTON, self.on_connect, self.connect_btn)
+        self.connect_btn.SetDefault()
+        self.connect_btn.SetSize(self.connect_btn.GetBestSize())
         
-        self.Bind(wx.EVT_BUTTON, self.on_connect, self.edk_disconnect_btn)
-        self.edk_disconnect_btn.SetSize(self.edk_connect_btn.GetBestSize())
+        self.Bind(wx.EVT_BUTTON, self.on_connect, self.disconnect_btn)
+        self.disconnect_btn.SetSize(self.connect_btn.GetBestSize())
         
-        box = wx.BoxSizer(wx.VERTICAL)
-        box.Add(self.edk_connect_btn)
-        box.Add(self.edk_disconnect_btn)
+        box1 = wx.BoxSizer(wx.HORIZONTAL)
+        box1.Add(self.quality_check_interval_lbl)
+        box1.Add(self.quality_check_interval_spn)
+
+        box2 = wx.BoxSizer(wx.HORIZONTAL)
+        box2.Add(self.sampling_interval_lbl)
+        box2.Add(self.sampling_interval_spn)
+
+        box3 = wx.StaticBox(self, -1, "EDK Connection")
+        bsizer3 = wx.StaticBoxSizer(box3, wx.VERTICAL)
+        bsizer3.Add(self.connect_btn, 0, wx.TOP|wx.LEFT, 10)
+        bsizer3.Add(self.disconnect_btn, 0, wx.TOP|wx.LEFT, 10)
+        
+        box4 = wx.StaticBox(self, -1, "Connection Parameters")
+        bsizer4 = wx.StaticBoxSizer(box4, wx.VERTICAL)
+        bsizer4.Add(box1, 0, wx.TOP|wx.LEFT, 10)
+        bsizer4.Add(box2, 0, wx.TOP|wx.LEFT, 10)
+
+        box = wx.BoxSizer(wx.HORIZONTAL)
+        box.Add(bsizer3, 1, wx.EXPAND|wx.ALL, 25)
+        box.Add(bsizer4, 1, wx.EXPAND|wx.ALL, 25)        
+        
         self.SetSizer(box)
 
     def refresh(self):
         """Refreshes the buttons based on the state of the connection"""
         if self.manager is None:
             # If no manager is found, then no button should be pressed.
-            self.edk_connect_btn.Disable()
-            self.edk_disconnect_btn.Disable()
+            self.connect_btn.Disable()
+            self.disconnect_btn.Disable()
+            
+            self.quality_check_interval_lbl.Disable()
+            self.quality_check_interval_spn.Disable()
+            
+            self.sampling_interval_lbl.Disable()
+            self.sampling_interval_spn.Disable()
             
         else:
             if self.manager.connected:
                 # If connected, the only option is Disconnect
-                self.edk_connect_btn.Disable()
-                self.edk_disconnect_btn.Enable()
+                self.connect_btn.Disable()
+                self.disconnect_btn.Enable()
+                
+                # And the parameters cannot be changed
+                self.quality_check_interval_lbl.Disable()
+                self.quality_check_interval_spn.Disable()
+                
+                self.sampling_interval_lbl.Disable()
+                self.sampling_interval_spn.Disable()
+                
             else:
                 # If disconnected, the only option is Connect
-                self.edk_connect_btn.Enable()
-                self.edk_disconnect_btn.Disable()
+                self.connect_btn.Enable()
+                self.disconnect_btn.Disable()
+                
+                # When disconnected, parameters can be changed 
+                self.quality_check_interval_lbl.Enable()
+                self.quality_check_interval_spn.Enable()
+                
+                self.sampling_interval_lbl.Enable()
+                self.sampling_interval_spn.Enable()
 
     def on_connect(self, event):
         """Handles the connection events"""
@@ -119,15 +181,13 @@ class NeuroTrainFrame(wx.Frame, ManagerWrapper):
         multiple times in the GUI
         """
         self.manager = EmotivManager()
-        connect_panel = ConnectPanel(self)
-        ConnectPanel.manager = self.manager
+        connect_panel = ConnectPanel(self, self.manager)
+        
     
     def do_layout(self):
+        """Really, does nothing"""
         pass
 
-    def on_connect(self, event):
-        """Handles the connection events"""
-        pass
 
 if __name__ == '__main__':
     app = wx.App()
