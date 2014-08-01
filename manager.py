@@ -14,9 +14,19 @@ from ctypes.util import find_library
 #print ctypes.util.find_library('edk.dll')  
 
 
-__all__ = ["EmotiveManager"]
+__all__ = ["EmotiveManager", "ConnectionError", "LibraryNotFoundError"]
 
 EDK_DLL_PATH = ".\\edk.dll"
+
+class ConnectionError(Exception):
+    """A specific error when the DLL is not found"""
+    def __init__(self, path):
+        #super(LibraryNotFoundError, self).__init__(self, args=path)
+        self.path = path
+    
+    def __str__(self):
+        return "Cannot connect to any EmotiveEngine using %s" % self.path
+
 
 class LibraryNotFoundError(Exception):
     """A specific error when the DLL is not found"""
@@ -29,6 +39,21 @@ class LibraryNotFoundError(Exception):
 
 # Here a thread that collects data
 
+class Sensor(object):
+    """An abstraction for a sensor"""
+    def __init__(self, name="", id=0, position=(0,0,0),
+                 connected=False, included=False):
+        self.name = name
+        self.id = id
+        self.position = position
+        self.connected = connected
+        self.included = included
+
+class Headset():
+    """An abstraction of an headset"""
+    def __init__(self):
+        pass   # Still unimplemented
+
 class EmotivManager ():
     #code
     def __init__(self ):
@@ -37,24 +62,37 @@ class EmotivManager ():
         self.load_edk()
         self._connected = False # Whether connected or not
         self._sampling = False  # Whether sampling or not
-        self._sampling_interval = 1      # Sampling interval in secs            
+        self._sampling_interval = 1      # Sampling interval in secs
+        self._sansor_quality_interval = 2
         
         ## Emotive C structures
-        eEvent      = self.edk.EE_EmoEngineEventCreate()
-        eState      = self.edk.EE_EmoStateCreate()
-        userID      = c_uint(0)
-        nSamples   = c_uint(0)
-        nSam       = c_uint(0)
-        nSamplesTaken  = pointer(nSamples)
-        da = zeros(128,double)
-        data     = pointer(c_double(0))
-        user                    = pointer(userID)
-        composerPort          = c_uint(1726)
-        secs            = c_float(1)
-        datarate        = c_uint(0)
-        readytocollect  = False
-        option      = c_int(0)
-        state     = c_int(0)
+        ##
+        ## *** NOTE!!! ***
+        ## These structures should be re-allocated every single time
+        ## a connection is made, RIGHT BEFORE connecting.  They depend
+        ## on some parameters (like sampling rate) that should be settable
+        ## from the GUI.  To set them properly, one should always disconnect
+        ## first and then reconnect with new parameters
+        ## The structures should be de-allocated (with self.cleanup()) only
+        ## when one is completely done, and no further connection can be
+        ## pursued (e.g., when the manager is deleted or the main window
+        ## exits)
+        
+        self.eEvent      = self.edk.EE_EmoEngineEventCreate()
+        self.eState      = self.edk.EE_EmoStateCreate()
+        self.userID      = c_uint(0)
+        self.nSamples   = c_uint(0)
+        self.nSam       = c_uint(0)
+        self.nSamplesTaken  = pointer(self.nSamples)
+        self.da = zeros(128,double)
+        self.data     = pointer(c_double(0))
+        self.user                    = pointer(self.userID)
+        self.composerPort          = c_uint(1726)
+        self.secs            = c_float(1)
+        self.datarate        = c_uint(0)
+        self.readytocollect  = False
+        self.option      = c_int(0)
+        self.state     = c_int(0)
     
     def load_edk(self):
         """Loads the EDK.dll library"""
@@ -82,26 +120,38 @@ class EmotivManager ():
             # attempt to connect to an Emotive engine
             conn = self.edk.EE_EngineConnect("Emotiv Systems-5")
             
-            # If the result is 0, the connection was successful.
-            # If not, we failed, and we need to set connected back
-            # to False
             if conn == 0:
+                # If the result is 0, the connection was successful.
                 self.connected = True
+                
             else:
+                # If not, we failed, and we need to set connected back
+                # to False and raise an Error
                 self.connected = False
+                raise ConnectionError(EDK_DLL_PATH)
 
 
     def Disconnect(self):
         """Disconnects from the EmoEngine"""
         if self.connected:
             conn = self.edk.EE_EngineDisconnect()
-            self.edk.EE_EmoStateFree(self.eState)
-            self.edk.EE_EmoEngineEventFree(self.eEvent)
+            #self.edk.EE_EmoStateFree(self.eState)
+            #self.edk.EE_EmoEngineEventFree(self.eEvent)
             if conn == 0:
                 self.connected = False
             else:
                 raise Exception("Cannot disconnect from EmoEngine")
 
+
+    @property
+    def sampling_interval(self):
+        """Returns the sampling interval"""
+        return self._sampling_interval
+    
+    @sampling_interval.setter
+    def sampling_interval(self, val):
+        """Sets the sampling interval"""
+        self._sampling_interval = val
 
     @property
     def sampling(self):
@@ -133,12 +183,35 @@ class EmotivManager ():
             # will analyze the data properly.
             # ...
             # And then sleep!
-            time.sleep(self.interval)
+            time.sleep(self.sampling_interval)
+            
     
+    @property
+    def sensor_quality_interval(self):
+        return self._sensor_quality_interval
+    
+    @sensor_quality_interval.setter
+    def sensor_quality_interval(self, val):
+        self._sensor_quality_interval = val
+
+    
+    def QualityCheck(self):
+        if self.connected:
+            # Here it should check the status of the given electrodes
+            #
+            # And then notify some other object (maybe subclass method?)
+            #
+            # And then sleep
+            time.sleep(self.sensor_quality_interval)
+    
+
+    def cleanup(self):
+        """Cleanly removes C++ allocated objects"""
+        self.edk.EE_EmoStateFree(self.eState)
+        self.edk.EE_EmoEngineEventFree(self.eEvent)
         
     def __del__(self):
         """Disconnects before destroying the object"""
         if self.connected:
             conn = self.edk.EE_EngineDisconnect()
-            self.edk.EE_EmoStateFree(self.eState)
-            self.edk.EE_EmoEngineEventFree(self.eEvent)
+            self.cleanup()
