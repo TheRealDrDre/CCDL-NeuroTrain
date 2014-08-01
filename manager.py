@@ -11,22 +11,37 @@ from variables import *
 import time
 from ctypes.util import find_library
 
-print ctypes.util.find_library('edk.dll')  
-print os.path.exists('.\\edk.dll')
-libEDK = cdll.LoadLibrary(".\\edk.dll")
+#print ctypes.util.find_library('edk.dll')  
+
+
+__all__ = ["EmotiveManager"]
+
+EDK_DLL_PATH = ".\\edk.dll"
+
+class LibraryNotFoundError(Exception):
+    """A specific error when the DLL is not found"""
+    def __init__(self, path):
+        #super(LibraryNotFoundError, self).__init__(self, args=path)
+        self.path = path
+    
+    def __str__(self):
+        return "Cannot find library at path %s" % self.path
 
 # Here a thread that collects data
 
 class EmotivManager ():
     #code
     def __init__(self ):
+        self.edk = None
+        self.edk_loaded = False
+        self.load_edk()
         self._connected = False # Whether connected or not
         self._sampling = False  # Whether sampling or not
-        self._sampling_interval = 1      # Sampling interval in secs
+        self._sampling_interval = 1      # Sampling interval in secs            
         
         ## Emotive C structures
-        eEvent      = libEDK.EE_EmoEngineEventCreate()
-        eState      = libEDK.EE_EmoStateCreate()
+        eEvent      = self.edk.EE_EmoEngineEventCreate()
+        eState      = self.edk.EE_EmoStateCreate()
         userID      = c_uint(0)
         nSamples   = c_uint(0)
         nSam       = c_uint(0)
@@ -41,39 +56,47 @@ class EmotivManager ():
         option      = c_int(0)
         state     = c_int(0)
     
+    def load_edk(self):
+        """Loads the EDK.dll library"""
+        if os.path.exists( EDK_DLL_PATH ):
+            self.edk = cdll.LoadLibrary( EDK_DLL_PATH )
+            self.edk_loaded = True
+        else:
+            raise LibraryNotFoundError(EDK_DLL_PATH)
+    
     @property
     def connected(self):
         return self._connected
     
     @connected.setter
-    def connected(self, bool):
+    def connected(self, val):
         self._connected = bool
     
     def Connect(self):
         """Attempts a connection to the headset"""
-        if self.connected == bool
-            # If trying to connect while connected, or trying
-            # to disconnect while disconnected, do nothing
+        if self.connected:
+            # If trying to connect while connected, do nothing
             pass            
         else:
-            if bool:
-                # If trying to connect while disconnected, then
-                # attempt to connect to an Emotive engine
-                conn = libEDK.EE_EngineConnect("Emotiv Systems-5")
-                
-                # If the result is 0, the connection was successful.
-                # If not, we failed, and we need to set connected back
-                # to False
-                if conn == 0:
-                    self.connected = True
-                else:
-                    self.connected = False
+            # If trying to connect while disconnected, then
+            # attempt to connect to an Emotive engine
+            conn = self.edk.EE_EngineConnect("Emotiv Systems-5")
+            
+            # If the result is 0, the connection was successful.
+            # If not, we failed, and we need to set connected back
+            # to False
+            if conn == 0:
+                self.connected = True
             else:
-    
-    def Disconnect(self,):
+                self.connected = False
+
+
+    def Disconnect(self):
         """Disconnects from the EmoEngine"""
         if self.connected:
-            conn = libEDK.EE_EngineDisconnect()
+            conn = self.edk.EE_EngineDisconnect()
+            self.edk.EE_EmoStateFree(self.eState)
+            self.edk.EE_EmoEngineEventFree(self.eEvent)
             if conn == 0:
                 self.connected = False
             else:
@@ -114,7 +137,8 @@ class EmotivManager ():
     
         
     def __del__(self):
-        """Frees memory when destroying the object"""
-        libEDK.EE_EmoStateFree(self.eState)
-        libEDK.EE_EmoEngineEventFree(self.eEvent)
-
+        """Disconnects before destroying the object"""
+        if self.connected:
+            conn = self.edk.EE_EngineDisconnect()
+            self.edk.EE_EmoStateFree(self.eState)
+            self.edk.EE_EmoEngineEventFree(self.eEvent)
