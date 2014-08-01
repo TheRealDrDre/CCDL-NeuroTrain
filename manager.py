@@ -99,9 +99,8 @@ class EmotivManager ():
         else:
             if bool:
                 self._sampler = Thread(self.Sample)
-                self._sampler.start()
                 # Here we start the thread
-                
+                self._sampler.start()
         
     def Sample(self):
         if self.sampling:
