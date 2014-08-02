@@ -177,7 +177,7 @@ class UserPanel(ManagerPanel):
         bsizer.Add(self.user_lbl)
         
         sizer = wx.BoxSizer(wx.VERTICAL)
-        sizer.Add(bsizer, 0, wx.ALL | wx.EXPAND)
+        sizer.Add(bsizer, 0, wx.ALL | wx.EXPAND, 25)
         
         self.SetSizer(sizer)
         
@@ -209,7 +209,9 @@ class NeuroTrainFrame(wx.Frame, ManagerWrapper):
         box.Add(self.connect_panel)
         box.Add(self.user_panel)
         
-        self.SetSizer(box)
+        metabox = wx.BoxSizer(wx.HORIZONTAL)
+        metabox.Add(box, wx.ALIGN_CENTER, 10)
+        self.SetSizer(metabox)
 
 
 if __name__ == '__main__':

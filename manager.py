@@ -17,6 +17,13 @@ __all__ = ["EmotiveManager", "ConnectionError", "LibraryNotFoundError",
 
 EDK_DLL_PATH = ".\\edk.dll"
 
+CCDL_USER_EVENT = 1001
+CCDL_SAMPLING_EVENT = 1002
+CCDL_CONNECTION_EVENT = 1003
+
+CCDL_EVENTS = (CCDL_USER_EVENT, CCDL_SAMPLING_EVENT,
+               CCDL_CONNECTION_EVENT)
+
 class ConnectionError(Exception):
     """A specific error when the DLL is not found"""
     def __init__(self, path):
@@ -36,7 +43,6 @@ class LibraryNotFoundError(Exception):
     def __str__(self):
         return "Cannot find library at path %s" % self.path
 
-# Here a thread that collects data
 
 class Sensor(object):
     """An abstraction for a sensor"""
@@ -64,6 +70,7 @@ class EmotivManager ():
         self._sampling = False  # Whether sampling or not
         self._sampling_interval = 1      # Sampling interval in secs
         self._monitor_interval = 2.0
+        self._listeners = zip(CCDL_EVENTS, [[] for i in CCDL_EVENTS])
         
         ## Emotive C structures
         ##
@@ -90,7 +97,6 @@ class EmotivManager ():
         self.composerPort          = c_uint(1726)
         self.secs            = c_float(1)
         self.datarate        = c_uint(0)
-        self.readytocollect  = False
         self.option      = c_int(0)
         self.state     = c_int(0)
     
@@ -231,6 +237,14 @@ class EmotivManager ():
             # here should raise some exceptions
             pass
     
+    ## EVENTS MODEL
+    
+    def AddListener(id, obj):
+        """Adds a listener"""
+        if id in CCDL_EVENTS:
+            if obj is not None and "refresh" in obj.__dict__:
+                if obj not in self._listeners[id]:
+                    self._listeners.Add(obj)
 
     def cleanup(self):
         """Cleanly removes C++ allocated objects"""
