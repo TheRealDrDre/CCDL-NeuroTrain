@@ -3,36 +3,11 @@
 # Neurofeedback GUI
 
 import wx
-from manager import EmotivManager
+from manager import EmotivManager, ManagerWrapper
 
 
-class ManagerWrapper(object):
-    """An object that contains an EmotivManager"""
-    
-    def __init__(self, manager=None):
-        """Sets the manager"""
-        self._manager = manager
-    
-    def refresh(self):
-        """A method that should be called by the manager whenever
-        some of its properties change """
-        pass
-    
-    @property
-    def manager(self):
-        return self._manager
-    
-    @manager.setter
-    def manager(self, mngr):
-        self._manager = mngr
-    
-
-# CONNECT PANEL
-#
-# A connect panel manages the connection to EDK through the internal manager.
-#
-class ConnectPanel(wx.Panel, ManagerWrapper):
-    """A Simple Panel that Connects or Disconnects to an Emotiv System"""
+class ManagerPanel(wx.Panel, ManagerWrapper):
+    """A subclass for all panels that wraps around an Emotiv Manager"""
     def __init__(self, parent, manager):
         wx.Panel.__init__(self, parent, -1,
                          style=wx.NO_FULL_REPAINT_ON_RESIZE)
@@ -40,6 +15,24 @@ class ConnectPanel(wx.Panel, ManagerWrapper):
         self.create_objects()
         self.do_layout()
         self.refresh()
+        
+    def create_objects(self):
+        """Creates the objects that will be accessed later"""
+        pass
+    
+    def do_layout(self):
+        """Lays out the objets into an interface"""
+        pass
+
+# CONNECT PANEL
+#
+# A connect panel manages the connection to EDK through the internal manager.
+#
+class ConnectPanel(ManagerPanel):
+    """A Simple Panel that Connects or Disconnects to an Emotiv System"""
+    
+    #def __init__(self, parent, manager):
+    #    ManagerPanel.__init__(self, parent, manager)
     
     def create_objects(self):
         """Creates the internal objects"""
@@ -51,7 +44,7 @@ class ConnectPanel(wx.Panel, ManagerWrapper):
         
         text = wx.StaticText(self, -1,
                             "Sampling interval (in seconds)",
-                            (45, 15))
+                            (25, 15))
         self.sampling_interval_spn = spin
         self.sampling_interval_lbl = text
         
@@ -60,8 +53,8 @@ class ConnectPanel(wx.Panel, ManagerWrapper):
         spin.SetValue(1)
         
         text = wx.StaticText(self, -1,
-                            "Quality Check Interval (in seconds)",
-                            (45, 15))
+                            "Monitoring Interval (in seconds)",
+                            (25, 15))
         
         self.quality_check_interval_spn = spin
         self.quality_check_interval_lbl = text
@@ -169,9 +162,33 @@ class ConnectPanel(wx.Panel, ManagerWrapper):
         self.refresh()
             
 
-
+class UserPanel(ManagerPanel):
+    """A Class that visualizes the user and its sensors"""
+    
+    def create_objects(self):
+        """Creates the objects"""
+        self.user_lbl = wx.StaticText(self, -1, "No User Found")
+        self.sensors = {}
+        
+    def do_layout(self):
+        """Lays out the components"""
+        box = wx.StaticBox(self, -1, "User")
+        bsizer = wx.StaticBoxSizer(box, wx.VERTICAL)
+        bsizer.Add(self.user_lbl)
+        
+        sizer = wx.BoxSizer(wx.VERTICAL)
+        sizer.Add(bsizer, 0, wx.ALL | wx.EXPAND)
+        
+        self.SetSizer(sizer)
+        
+        
+        
+    
 class NeuroTrainFrame(wx.Frame, ManagerWrapper):
+    """The main frame"""
+    
     def __init__(self, parent, title):
+        """Inits the frame"""
         super(NeuroTrainFrame, self).__init__(parent, title=title, size=(250, 200))
         self.create_objects()
         self.do_layout()
@@ -182,12 +199,17 @@ class NeuroTrainFrame(wx.Frame, ManagerWrapper):
         multiple times in the GUI
         """
         self.manager = EmotivManager()
-        connect_panel = ConnectPanel(self, self.manager)
+        self.connect_panel = ConnectPanel(self, self.manager)
+        self.user_panel = UserPanel(self, self.manager)
         
-    
+        
     def do_layout(self):
-        """Really, does nothing"""
-        pass
+        """Really, does nothing here"""
+        box = wx.BoxSizer(wx.VERTICAL)
+        box.Add(self.connect_panel)
+        box.Add(self.user_panel)
+        
+        self.SetSizer(box)
 
 
 if __name__ == '__main__':

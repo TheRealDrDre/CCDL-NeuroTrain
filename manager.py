@@ -11,10 +11,9 @@ from variables import *
 import time
 from ctypes.util import find_library
 
-#print ctypes.util.find_library('edk.dll')  
 
-
-__all__ = ["EmotiveManager", "ConnectionError", "LibraryNotFoundError"]
+__all__ = ["EmotiveManager", "ConnectionError", "LibraryNotFoundError",
+           "ManagerWrapper"]
 
 EDK_DLL_PATH = ".\\edk.dll"
 
@@ -162,27 +161,30 @@ class EmotivManager ():
     @sampling.setter
     def sampling(self, bool):
         """Sets the sampling state"""
-        if self.sampling:
-            if bool:
-                # Should throw exception here---
-                # Cannot start a second sampling thread!
-                pass   
+        if self.has_user:
+            if self.sampling:
+                if bool:
+                    # Should throw exception here---
+                    # Cannot start a second sampling thread!
+                    pass   
+                else:
+                    # This means we are stoppin data sampling
+                    self._sampling = bool
             else:
-                # This means we are stoppin data sampling
-                self._sampling = bool
-        else:
-            if bool:
-                self._sampler = Thread(self.Sample)
-                # Here we start the thread
-                self._sampler.start()
+                if bool:
+                    self._sampler = Thread(self.Sample)
+                    # Here we start the thread
+                    self._sampler.start()
         
     def Sample(self):
-        if self.sampling:
+        """Samples data from the headset every sampling interval"""
+        if self.has_user and self.sampling:
             # Acquires data here
             # ...
             # And then notifies some other object (GUI) that
             # will analyze the data properly.
             # ...
+            # 
             # And then sleep!
             time.sleep(self.sampling_interval)
             
@@ -200,28 +202,34 @@ class EmotivManager ():
         if self.connected:
             state = self.edk.EE_EngineGetNextEvent(eEvent)
             if state == 0:
-            eventType = self.edk.EE_EmoEngineEventGetType(self.eEvent)
-            self.edk.EE_EmoEngineEventGetUserId(self.eEvent, self.user)
-            if eventType == variables.EE_UserAdded: 
-                print "User added"
-                libEDK.EE_DataAcquisitionEnable(userID,True)
-                readytocollect = True   # This should be something else
-                # Here it should check the status of the given electrodes
-                #
-                # And then notify some other object (maybe subclass method?)
-                #
-                # And then sleep
-            elif eventType == variables.EE_UserAdded:
-                # Disconnect
+                eventType = self.edk.EE_EmoEngineEventGetType(self.eEvent)
+                self.edk.EE_EmoEngineEventGetUserId(self.eEvent, self.user)
+                if eventType == variables.EE_UserAdded: 
+                    print "User added"
+                    libEDK.EE_DataAcquisitionEnable(userID,True)
+                    self.has_user = False
+                    # Here it should check the status of the given electrodes
+                    #
+                    # And then notify some other object (maybe subclass method?)
+                    #
+                    # And then sleep
+                elif eventType == variables.EE_UserRemoved:
+                    self.has_user = False
+                    # Disconnect
         time.sleep(self.monitor_interval)
 
     @property
-    def user(self):
-        return self._user
+    def has_user(self):
+        return self._has_user
     
-    @user.setter
-    def user(self, val):
-        self._user = val
+    @has_user.setter
+    def has_user(self, val):
+        """Sets the user (only if the manager is already connected)"""
+        if self.connected:
+            self._has_user = val
+        else:
+            # here should raise some exceptions
+            pass
     
 
     def cleanup(self):
@@ -234,3 +242,24 @@ class EmotivManager ():
         if self.connected:
             conn = self.edk.EE_EngineDisconnect()
             self.cleanup()
+            
+            
+class ManagerWrapper(object):
+    """An object that contains an EmotivManager"""
+    
+    def __init__(self, manager=None):
+        """Sets the manager"""
+        self._manager = manager
+    
+    def refresh(self):
+        """A method that should be called by the manager whenever
+        some of its properties change """
+        pass
+    
+    @property
+    def manager(self):
+        return self._manager
+    
+    @manager.setter
+    def manager(self, mngr):
+        self._manager = mngr
