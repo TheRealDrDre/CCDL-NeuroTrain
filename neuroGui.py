@@ -169,6 +169,7 @@ class ConnectPanel(wx.Panel, ManagerWrapper):
         self.refresh()
             
 
+
 class NeuroTrainFrame(wx.Frame, ManagerWrapper):
     def __init__(self, parent, title):
         super(NeuroTrainFrame, self).__init__(parent, title=title, size=(250, 200))

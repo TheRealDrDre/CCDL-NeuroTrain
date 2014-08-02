@@ -61,9 +61,10 @@ class EmotivManager ():
         self.edk_loaded = False
         self.load_edk()
         self._connected = False # Whether connected or not
+        self._has_user = False # Whether there is a user or not
         self._sampling = False  # Whether sampling or not
         self._sampling_interval = 1      # Sampling interval in secs
-        self._sansor_quality_interval = 2
+        self._monitor_interval = 2.0
         
         ## Emotive C structures
         ##
@@ -108,7 +109,7 @@ class EmotivManager ():
     
     @connected.setter
     def connected(self, val):
-        self._connected = bool
+        self._connected = val
     
     def Connect(self):
         """Attempts a connection to the headset"""
@@ -188,21 +189,39 @@ class EmotivManager ():
     
     @property
     def sensor_quality_interval(self):
-        return self._sensor_quality_interval
+        return self._monitor_interval
     
     @sensor_quality_interval.setter
     def sensor_quality_interval(self, val):
-        self._sensor_quality_interval = val
+        self._monitor_interval = val
 
     
-    def QualityCheck(self):
+    def Monitor(self):
         if self.connected:
-            # Here it should check the status of the given electrodes
-            #
-            # And then notify some other object (maybe subclass method?)
-            #
-            # And then sleep
-            time.sleep(self.sensor_quality_interval)
+            state = self.edk.EE_EngineGetNextEvent(eEvent)
+            if state == 0:
+            eventType = self.edk.EE_EmoEngineEventGetType(self.eEvent)
+            self.edk.EE_EmoEngineEventGetUserId(self.eEvent, self.user)
+            if eventType == variables.EE_UserAdded: 
+                print "User added"
+                libEDK.EE_DataAcquisitionEnable(userID,True)
+                readytocollect = True   # This should be something else
+                # Here it should check the status of the given electrodes
+                #
+                # And then notify some other object (maybe subclass method?)
+                #
+                # And then sleep
+            elif eventType == variables.EE_UserAdded:
+                # Disconnect
+        time.sleep(self.monitor_interval)
+
+    @property
+    def user(self):
+        return self._user
+    
+    @user.setter
+    def user(self, val):
+        self._user = val
     
 
     def cleanup(self):
