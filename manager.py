@@ -5,6 +5,7 @@ from threading import Thread
 import ctypes
 import sys
 import os
+import ccdl
 from ctypes import *
 from numpy import *
 from variables import *
@@ -17,12 +18,6 @@ __all__ = ["EmotiveManager", "ConnectionError", "LibraryNotFoundError",
 
 EDK_DLL_PATH = ".\\edk.dll"
 
-CCDL_USER_EVENT = 1001
-CCDL_SAMPLING_EVENT = 1002
-CCDL_CONNECTION_EVENT = 1003
-
-CCDL_EVENTS = (CCDL_USER_EVENT, CCDL_SAMPLING_EVENT,
-               CCDL_CONNECTION_EVENT)
 
 class ConnectionError(Exception):
     """A specific error when the DLL is not found"""
@@ -70,7 +65,7 @@ class EmotivManager ():
         self._sampling = False  # Whether sampling or not
         self._sampling_interval = 1      # Sampling interval in secs
         self._monitor_interval = 2.0
-        self._listeners = zip(CCDL_EVENTS, [[] for i in CCDL_EVENTS])
+        self._listeners = zip(ccdl.EVENTS, [[] for i in ccdl.EVENTS])
         
         ## Emotive C structures
         ##
@@ -116,7 +111,7 @@ class EmotivManager ():
     def connected(self, val):
         self._connected = val
     
-    def Connect(self):
+    def connect(self):
         """Attempts a connection to the headset"""
         if self.connected:
             # If trying to connect while connected, do nothing
@@ -137,7 +132,7 @@ class EmotivManager ():
                 raise ConnectionError(EDK_DLL_PATH)
 
 
-    def Disconnect(self):
+    def disconnect(self):
         """Disconnects from the EmoEngine"""
         if self.connected:
             conn = self.edk.EE_EngineDisconnect()
@@ -178,11 +173,11 @@ class EmotivManager ():
                     self._sampling = bool
             else:
                 if bool:
-                    self._sampler = Thread(self.Sample)
+                    self._sampler = Thread(self.sample)
                     # Here we start the thread
                     self._sampler.start()
         
-    def Sample(self):
+    def sample(self):
         """Samples data from the headset every sampling interval"""
         if self.has_user and self.sampling:
             # Acquires data here
@@ -196,15 +191,17 @@ class EmotivManager ():
             
     
     @property
-    def sensor_quality_interval(self):
+    def monitor_interval(self):
         return self._monitor_interval
     
-    @sensor_quality_interval.setter
-    def sensor_quality_interval(self, val):
+    @monitor_interval.setter
+    def monitor_interval(self, val):
         self._monitor_interval = val
 
     
-    def Monitor(self):
+    def monitor(self):
+        """A function that continuously monitors the status of a
+        headset (and whether a user is connected or not)"""
         if self.connected:
             state = self.edk.EE_EngineGetNextEvent(eEvent)
             if state == 0:
@@ -221,11 +218,12 @@ class EmotivManager ():
                     # And then sleep
                 elif eventType == variables.EE_UserRemoved:
                     self.has_user = False
-                    # Disconnect
+                    # Disconnect ?? Probably not. We Can keep listening
         time.sleep(self.monitor_interval)
 
     @property
     def has_user(self):
+        """Whether a user is connected or not"""
         return self._has_user
     
     @has_user.setter
@@ -239,12 +237,33 @@ class EmotivManager ():
     
     ## EVENTS MODEL
     
-    def AddListener(id, obj):
+    def add_listener(id, obj):
         """Adds a listener"""
-        if id in CCDL_EVENTS:
+        if id in ccdl.EVENTS:
             if obj is not None and "refresh" in obj.__dict__:
+                #
+                # Or we could add functions and simply add elements
+                # iff type(obj) in (types.FunctionType, types.MethodType)
+                #
                 if obj not in self._listeners[id]:
                     self._listeners.Add(obj)
+            else:
+                
+                # Maybe throw an exception if it's not a function?
+                pass
+        else:
+            raise ccdl.EventError(event_id)
+
+
+    def execute_event_functions(self, event_id):
+        """Executes all the listener functions associated with a given
+        event ID"""
+        if event_id in ccdl.EVENTS:
+            for func in self._listeners[event_id]:
+                func()
+        else:
+            raise ccdl.EventError(event_id)
+            
 
     def cleanup(self):
         """Cleanly removes C++ allocated objects"""
@@ -261,9 +280,10 @@ class EmotivManager ():
 class ManagerWrapper(object):
     """An object that contains an EmotivManager"""
     
-    def __init__(self, manager=None):
+    def __init__(self, manager=None, monitored_events=()):
         """Sets the manager"""
         self._manager = manager
+        self._monitored_events = monitored_events
     
     def refresh(self):
         """A method that should be called by the manager whenever
@@ -277,3 +297,20 @@ class ManagerWrapper(object):
     @manager.setter
     def manager(self, mngr):
         self._manager = mngr
+        if self.manager is not None:
+            for i in self.monitored_events:
+                self.manager.add_listener(self.refresh)
+            
+        
+    @property
+    def monitored_events(self):
+        return self._monitored_events
+    
+    @monitored_events.setter
+    def monitored_events(self, event_ids):
+        self._monitored_events = tuple(event_ids)
+        if self.manager is not None:
+            for i in events_id:
+                self.manager.add_listener(i, self.refresh)
+    
+    

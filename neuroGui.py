@@ -3,19 +3,20 @@
 # Neurofeedback GUI
 
 import wx
+import ccdl
 from manager import EmotivManager, ManagerWrapper
 
 
 class ManagerPanel(wx.Panel, ManagerWrapper):
     """A subclass for all panels that wraps around an Emotiv Manager"""
-    def __init__(self, parent, manager):
+    def __init__(self, parent, manager, monitored_events=()):
         wx.Panel.__init__(self, parent, -1,
                          style=wx.NO_FULL_REPAINT_ON_RESIZE)
-        ManagerWrapper.__init__(self, manager)
+        ManagerWrapper.__init__(self, manager, monitored_events=monitored_events)
         self.create_objects()
         self.do_layout()
-        self.refresh()
-        
+        self.refresh()    
+    
     def create_objects(self):
         """Creates the objects that will be accessed later"""
         pass
@@ -31,8 +32,10 @@ class ManagerPanel(wx.Panel, ManagerWrapper):
 class ConnectPanel(ManagerPanel):
     """A Simple Panel that Connects or Disconnects to an Emotiv System"""
     
-    #def __init__(self, parent, manager):
-    #    ManagerPanel.__init__(self, parent, manager)
+    def __init__(self, parent, manager):
+        """A ManagerPanel that monitors connection events"""
+        ManagerPanel.__init__(self, parent, manager,
+                              monitored_events=(ccdl.CONNECTION_EVENT))
     
     def create_objects(self):
         """Creates the internal objects"""
@@ -108,6 +111,16 @@ class ConnectPanel(ManagerPanel):
             self.sampling_interval_spn.Disable()
             
         else:
+            # If we have a manager, then we can should load the interval
+            # parameters first
+            
+            val = self.manager.monitor_interval
+            self.quality_check_interval_spn.SetValue(val)
+            
+            val = self.manager.sampling_interval
+            self.sampling_interval_spn.SetValue(val)
+            
+            # Now we enable/disable buttons based on connection 
             if self.manager.connected:
                 # If connected, the only option is Disconnect
                 self.connect_btn.Disable()
@@ -137,7 +150,7 @@ class ConnectPanel(ManagerPanel):
         print "on_connect %s" % event.GetId()
         if (event.GetId() == 12):
             try:
-                self.manager.Connect()
+                self.manager.connect()
             except Exception as e:
                 dlg = wx.MessageDialog(self, "%s" % e,
                                'Error While Connecting',
@@ -149,7 +162,7 @@ class ConnectPanel(ManagerPanel):
                 
         else:
             try:
-                self.manager.Disconnect()
+                self.manager.disconnect()
             except Exception as e:
                 dlg = wx.MessageDialog(self, "%s" % e,
                                        'Error While Disconnecting',
