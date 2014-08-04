@@ -8,12 +8,12 @@ import os
 import ccdl
 from ctypes import *
 from numpy import *
-from variables import *
+import variables
 import time
 from ctypes.util import find_library
 
 
-__all__ = ["EmotiveManager", "ConnectionError", "LibraryNotFoundError",
+__all__ = ["EmotivManager", "ConnectionError", "LibraryNotFoundError",
            "ManagerWrapper"]
 
 EDK_DLL_PATH = ".\\edk.dll"
@@ -54,7 +54,7 @@ class Headset():
     def __init__(self):
         pass   # Still unimplemented
 
-class EmotivManager ():
+class EmotivManager(object):
     #code
     def __init__(self ):
         self.edk = None
@@ -64,8 +64,10 @@ class EmotivManager ():
         self._has_user = False # Whether there is a user or not
         self._sampling = False  # Whether sampling or not
         self._sampling_interval = 1      # Sampling interval in secs
+        self._monitoring = False
         self._monitor_interval = 2.0
-        self._listeners = zip(ccdl.EVENTS, [[] for i in ccdl.EVENTS])
+        self._listeners = dict(zip(ccdl.EVENTS, [[] for i in ccdl.EVENTS]))
+        print self._listeners
         
         ## Emotive C structures
         ##
@@ -124,6 +126,11 @@ class EmotivManager ():
             if conn == 0:
                 # If the result is 0, the connection was successful.
                 self.connected = True
+                self.hData = self.edk.EE_DataCreate()
+                self.edk.EE_DataSetBufferSizeInSec(c_float(1))  # This needs to change to samplinh interval
+                
+                eventType = self.edk.EE_EmoEngineEventGetType(self.eEvent)
+                print "State after connect: %d" % eventType
                 
             else:
                 # If not, we failed, and we need to set connected back
@@ -192,34 +199,68 @@ class EmotivManager ():
     
     @property
     def monitor_interval(self):
+        print "Getting monitoring_interval..."
         return self._monitor_interval
     
     @monitor_interval.setter
     def monitor_interval(self, val):
+        print "Setting monitor_interval to: %s" % val
         self._monitor_interval = val
 
+    @property
+    def monitoring(self):
+        return self._monitoring
+
+    @monitoring.setter
+    def monitoring(self, bool):
+        "Sets the monitoring state"
+        print "Setting the monitoring property: %s" % bool
+        if self._monitoring:
+            if bool:
+                # Should throw exception here---
+                # Cannot start a second monitoring thread!
+                pass
+            else:
+                # This means we are stopping monitorng
+                self._monitoring = False
+        else:
+            if bool:
+                self._monitoring = True
+                self._monitor = Thread(target=self.monitor)
+                # Here we start the thread
+                self._monitor.start()
+    
     
     def monitor(self):
         """A function that continuously monitors the status of a
         headset (and whether a user is connected or not)"""
-        if self.connected:
-            state = self.edk.EE_EngineGetNextEvent(eEvent)
-            if state == 0:
+        #print "Started monitor"
+        while self.monitoring:
+            self.state = self.edk.EE_EngineGetNextEvent(self.eEvent)
+            print "Checked state: %s" % self.state
+            if self.state == 0:
+                "Checked state..."
                 eventType = self.edk.EE_EmoEngineEventGetType(self.eEvent)
                 self.edk.EE_EmoEngineEventGetUserId(self.eEvent, self.user)
-                if eventType == variables.EE_UserAdded: 
+                if eventType == variables.EE_User_Added or eventType == 16:
                     print "User added"
-                    libEDK.EE_DataAcquisitionEnable(userID,True)
-                    self.has_user = False
+                    self.edk.EE_DataAcquisitionEnable(self.userID, True)
+                    self.has_user = True
+                    self.execute_event_functions(ccdl.USER_EVENT)
                     # Here it should check the status of the given electrodes
                     #
                     # And then notify some other object (maybe subclass method?)
                     #
                     # And then sleep
-                elif eventType == variables.EE_UserRemoved:
+                elif eventType == variables.EE_User_Removed:
+                    print "User removed"
                     self.has_user = False
+                    self.execute_event_functions(ccdl.USER_EVENT)
                     # Disconnect ?? Probably not. We Can keep listening
-        time.sleep(self.monitor_interval)
+                else:
+                    print "Unknown event: %d" % eventType 
+            print "Sleeping now for %ss" % self.monitor_interval
+            time.sleep(self.monitor_interval)
 
     @property
     def has_user(self):
@@ -258,6 +299,8 @@ class EmotivManager ():
     def execute_event_functions(self, event_id):
         """Executes all the listener functions associated with a given
         event ID"""
+        print self._listeners
+        print len(self._listeners[event_id])
         if event_id in ccdl.EVENTS:
             for func in self._listeners[event_id]:
                 func()
@@ -297,9 +340,9 @@ class ManagerWrapper(object):
     @manager.setter
     def manager(self, mngr):
         self._manager = mngr
-        if self.manager is not None:
+        if mngr is not None:
             for i in self.monitored_events:
-                self.manager.add_listener(self.refresh)
+                mngr.add_listener(self.refresh)
             
         
     @property

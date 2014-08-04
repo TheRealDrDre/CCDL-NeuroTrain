@@ -28,6 +28,10 @@ ED_FUNC_VALUE = 22
 ED_MARKER = 23
 ED_SYNC_SIGNAL = 24
 
+## Quick list of sensors
+
+
+
 ## Hardware events
 
 EE_User_Added = 0x0010 

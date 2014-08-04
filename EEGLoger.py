@@ -86,7 +86,7 @@ else :
     print "option = ?"
     
 print "Start receiving EEG Data! Press any key to stop logging...\n"
-f = file('EEG-andy.csv', 'w')
+f = file('EEG-normal.csv', 'w')
 print >> f,header
     
 hData = libEDK.EE_DataCreate()
@@ -98,6 +98,7 @@ while (1):
     if state == 0:
         eventType = libEDK.EE_EmoEngineEventGetType(eEvent)
         libEDK.EE_EmoEngineEventGetUserId(eEvent, user)
+        print "eventType: %d" % eventType
         if eventType == 16: #libEDK.EE_Event_enum.EE_UserAdded:
             print "User added"
             libEDK.EE_DataAcquisitionEnable(userID,True)

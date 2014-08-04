@@ -4,8 +4,17 @@
 
 import wx
 import ccdl
+from variables import *
 from manager import EmotivManager, ManagerWrapper
 
+
+SENSORS = (ED_AF3, ED_F7, ED_F3, ED_FC5, ED_T7, ED_P7, ED_O1, ED_O2,
+           ED_P8, ED_T8, ED_FC6, ED_F4, ED_F8, ED_AF4)
+
+SENSOR_NAMES = {ED_AF3 : "AF3", ED_F7 : "F7", ED_F3 : "F3", ED_FC5 : "FC5",
+                ED_T7 : "T7", ED_P7 : "P7", ED_O1 : "O1", ED_O2 : "O2",
+                ED_P8 : "P8", ED_T8 : "T8", ED_FC6 : "FC6", ED_F4 : "F4",
+                ED_F8 : "F8", ED_AF4 : "AF4"}
 
 class ManagerPanel(wx.Panel, ManagerWrapper):
     """A subclass for all panels that wraps around an Emotiv Manager"""
@@ -138,7 +147,8 @@ class ConnectPanel(ManagerPanel):
                 self.connect_btn.Enable()
                 self.disconnect_btn.Disable()
                 
-                # When disconnected, parameters can be changed 
+                # When disconnected, and only when disconnected,
+                # the interval parameters can be changed 
                 self.quality_check_interval_lbl.Enable()
                 self.quality_check_interval_spn.Enable()
                 
@@ -150,7 +160,13 @@ class ConnectPanel(ManagerPanel):
         print "on_connect %s" % event.GetId()
         if (event.GetId() == 12):
             try:
-                self.manager.connect()
+                mngr = self.manager
+                mngr.connect()
+                
+                print mngr.monitoring
+                mngr.monitoring = True
+                print "...Set"
+                print mngr.monitoring
             except Exception as e:
                 dlg = wx.MessageDialog(self, "%s" % e,
                                'Error While Connecting',
@@ -167,7 +183,6 @@ class ConnectPanel(ManagerPanel):
                 dlg = wx.MessageDialog(self, "%s" % e,
                                        'Error While Disconnecting',
                                         wx.OK | wx.ICON_INFORMATION
-                               #wx.YES_NO | wx.NO_DEFAULT | wx.CANCEL | wx.ICON_INFORMATION
                                         )
                 dlg.ShowModal()
                 dlg.Destroy()
@@ -175,13 +190,63 @@ class ConnectPanel(ManagerPanel):
         self.refresh()
             
 
+class SensorPanel(wx.Panel):
+    """A small widget that displays the state of a sensor"""
+    def __init__(self, parent, sensor_id=0):
+        wx.Panel.__init__(self, parent, -1,
+                          style=wx.NO_FULL_REPAINT_ON_RESIZE)
+        
+        self._sensor_id = sensor_id
+        if sensor_id in SENSORS:
+            self._sensor_name = SENSOR_NAMES[sensor_id]
+        else:
+            self._sensor_name = "???"
+        self._checkbox = wx.CheckBox(self, -1, self._sensor_name)
+        self._sensor_enabled = False
+        self._sensor_recording = False  ## Currently unused
+        #self.do_layout()
+        
+    @property
+    def sensor_id(self):
+        return self._sensor_id
+    
+    @sensor_id.setter
+    def sensor_id(self, id):
+        self._sensor_id = id
+        self._sensor_name = SENSOR_NAMES[id]
+    
+    @property
+    def sensor_name(self):
+        return self._sensor_name
+    
+    @sensor_name.setter
+    def sensor_name(self, name):
+        self._sensor_name = name
+        
+    @property
+    def sensor_enabled(self):
+        return self._sensor_enabled
+    
+    @sensor_enabled.setter
+    def sensor_enabled(self, bool):
+        if bool:
+            self._checkbox.Enable()
+        else:
+            self._checkbox.Disable()
+        self._sensor_enabled = bool     
+    
+
 class UserPanel(ManagerPanel):
     """A Class that visualizes the user and its sensors"""
     
+    def __init__(self, parent, manager):
+        ManagerPanel.__init__(self, parent, manager,
+                              monitored_events=(ccdl.USER_EVENT))
     def create_objects(self):
         """Creates the objects"""
         self.user_lbl = wx.StaticText(self, -1, "No User Found")
-        self.sensors = {}
+        sensors = [SensorPanel(self, x) for x in SENSORS]
+        self.sensors = tuple(sensors)
         
     def do_layout(self):
         """Lays out the components"""
@@ -192,17 +257,40 @@ class UserPanel(ManagerPanel):
         sizer = wx.BoxSizer(wx.VERTICAL)
         sizer.Add(bsizer, 0, wx.ALL | wx.EXPAND, 25)
         
+        for i in self.sensors:
+            sizer.Add(i)
+        
         self.SetSizer(sizer)
-        
-        
-        
     
-class NeuroTrainFrame(wx.Frame, ManagerWrapper):
+    def set_all_enabled(self, bool):
+        """Enables or disables all components"""
+        if bool:
+            self.user_lbl.Enable()
+            for i in self.sensors:
+                i.Enable()
+            
+        else:
+            self.user_lbl.Disable()
+            for i in self.sensors:
+                i.Disable()
+            
+    
+    def refresh(self):
+        if self.manager.has_user:
+            self.user_lbl.SetLabel("Headset Connected")
+            self.set_all_enabled(True)
+        else:
+            self.user_lbl.SetLabel("No Headset Found")
+            self.set_all_enabled(False)
+
+
+class NeuroTrainFrame(wx.Frame):
     """The main frame"""
     
     def __init__(self, parent, title):
         """Inits the frame"""
-        super(NeuroTrainFrame, self).__init__(parent, title=title, size=(250, 200))
+        wx.Frame.__init__(self, parent, title=title, size=(250, 200))
+        #ManagerWrapper.__init__()
         self.create_objects()
         self.do_layout()
         self.Show()
@@ -217,7 +305,7 @@ class NeuroTrainFrame(wx.Frame, ManagerWrapper):
         
         
     def do_layout(self):
-        """Really, does nothing here"""
+        """Lays out the interface"""
         box = wx.BoxSizer(wx.VERTICAL)
         box.Add(self.connect_panel)
         box.Add(self.user_panel)
@@ -225,6 +313,17 @@ class NeuroTrainFrame(wx.Frame, ManagerWrapper):
         metabox = wx.BoxSizer(wx.HORIZONTAL)
         metabox.Add(box, wx.ALIGN_CENTER, 10)
         self.SetSizer(metabox)
+        
+        self.Bind(wx.EVT_CLOSE, self.on_quit)
+        
+    def on_quit(self, event):
+        self.manager.monitoring = False
+        #self.manager.has_user = False
+        #self.manager.sampling = False
+        #self.Close()
+        self.Destroy()
+        print "Quitting..."
+    
 
 
 if __name__ == '__main__':
