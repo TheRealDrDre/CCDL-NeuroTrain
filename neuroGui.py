@@ -16,6 +16,13 @@ SENSOR_NAMES = {ED_AF3 : "AF3", ED_F7 : "F7", ED_F3 : "F3", ED_FC5 : "FC5",
                 ED_P8 : "P8", ED_T8 : "T8", ED_FC6 : "FC6", ED_F4 : "F4",
                 ED_F8 : "F8", ED_AF4 : "AF4"}
 
+
+SENSOR_POSITIONS = {ED_AF3 : (85, 62), ED_F7 : (37, 113), ED_F3 : (118, 109),
+                    ED_FC5 : (67, 146), ED_T7 : (19, 190), ED_P7 : (70, 287),
+                    ED_O1 : (114, 336), ED_O2 : (196, 336), ED_P8 : (241, 287),
+                    ED_T8 : (291, 190), ED_FC6 : (243, 146), ED_F4 : (192, 109),
+                    ED_F8 : (274, 113), ED_AF4 : (224, 62)}
+
 class ManagerPanel(wx.Panel, ManagerWrapper):
     """A subclass for all panels that wraps around an Emotiv Manager"""
     def __init__(self, parent, manager, monitored_events=()):
@@ -68,9 +75,21 @@ class ConnectPanel(ManagerPanel):
                             "Monitoring Interval (in seconds)",
                             (25, 15))
         
-        self.quality_check_interval_spn = spin
-        self.quality_check_interval_lbl = text
+        self.monitor_interval_spn = spin
+        self.monitor_interval_lbl = text
         
+        self.Bind(wx.EVT_SPINCTRL, self.on_monitor_interval_change,
+                  self.monitor_interval_spn)
+        self.Bind(wx.EVT_TEXT, self.on_monitor_interval_change,
+                  self.monitor_interval_spn)
+        
+
+    def on_monitor_interval_change(self, evt):
+        """Whenever the monitor's spin control changes,
+        Sets a new interval value in the manager"""
+        val = float(self.monitor_interval_spn.GetValue())
+        self.manager.monitor_interval = val
+
     
     def do_layout(self):
         """Lays out the components"""
@@ -83,8 +102,8 @@ class ConnectPanel(ManagerPanel):
         self.disconnect_btn.SetSize(self.connect_btn.GetBestSize())
         
         box1 = wx.BoxSizer(wx.HORIZONTAL)
-        box1.Add(self.quality_check_interval_lbl)
-        box1.Add(self.quality_check_interval_spn)
+        box1.Add(self.monitor_interval_lbl)
+        box1.Add(self.monitor_interval_spn)
 
         box2 = wx.BoxSizer(wx.HORIZONTAL)
         box2.Add(self.sampling_interval_lbl)
@@ -113,8 +132,8 @@ class ConnectPanel(ManagerPanel):
             self.connect_btn.Disable()
             self.disconnect_btn.Disable()
             
-            self.quality_check_interval_lbl.Disable()
-            self.quality_check_interval_spn.Disable()
+            self.monitor_interval_lbl.Disable()
+            self.monitor_interval_spn.Disable()
             
             self.sampling_interval_lbl.Disable()
             self.sampling_interval_spn.Disable()
@@ -124,7 +143,7 @@ class ConnectPanel(ManagerPanel):
             # parameters first
             
             val = self.manager.monitor_interval
-            self.quality_check_interval_spn.SetValue(val)
+            self.monitor_interval_spn.SetValue(val)
             
             val = self.manager.sampling_interval
             self.sampling_interval_spn.SetValue(val)
@@ -136,8 +155,8 @@ class ConnectPanel(ManagerPanel):
                 self.disconnect_btn.Enable()
                 
                 # And the parameters cannot be changed
-                self.quality_check_interval_lbl.Disable()
-                self.quality_check_interval_spn.Disable()
+                self.monitor_interval_lbl.Disable()
+                self.monitor_interval_spn.Disable()
                 
                 self.sampling_interval_lbl.Disable()
                 self.sampling_interval_spn.Disable()
@@ -149,8 +168,8 @@ class ConnectPanel(ManagerPanel):
                 
                 # When disconnected, and only when disconnected,
                 # the interval parameters can be changed 
-                self.quality_check_interval_lbl.Enable()
-                self.quality_check_interval_spn.Enable()
+                self.monitor_interval_lbl.Enable()
+                self.monitor_interval_spn.Enable()
                 
                 self.sampling_interval_lbl.Enable()
                 self.sampling_interval_spn.Enable()
@@ -192,9 +211,10 @@ class ConnectPanel(ManagerPanel):
 
 class SensorPanel(wx.Panel):
     """A small widget that displays the state of a sensor"""
-    def __init__(self, parent, sensor_id=0):
+    def __init__(self, parent, sensor_id=0, size=(50, 25)):
         wx.Panel.__init__(self, parent, -1,
-                          style=wx.NO_FULL_REPAINT_ON_RESIZE)
+                          style=wx.NO_FULL_REPAINT_ON_RESIZE,
+                          size=size)
         
         self._sensor_id = sensor_id
         if sensor_id in SENSORS:
@@ -245,8 +265,19 @@ class UserPanel(ManagerPanel):
     def create_objects(self):
         """Creates the objects"""
         self.user_lbl = wx.StaticText(self, -1, "No User Found")
-        sensors = [SensorPanel(self, x) for x in SENSORS]
+        
+        # Creates the sensor panel
+        self.sensor_panel = wx.Panel(self)
+        
+        # Loads the sensor image
+        img = wx.Image("images/channels.gif", type=wx.BITMAP_TYPE_GIF)
+        img = img.ConvertToBitmap()
+        wx.StaticBitmap(self.sensor_panel, -1, img, (0, 0))
+        
+        # Creates the sensors and adds them to the sensor panel
+        sensors = [SensorPanel(self.sensor_panel, x) for x in SENSORS]
         self.sensors = tuple(sensors)
+        
         
     def do_layout(self):
         """Lays out the components"""
@@ -254,11 +285,13 @@ class UserPanel(ManagerPanel):
         bsizer = wx.StaticBoxSizer(box, wx.VERTICAL)
         bsizer.Add(self.user_lbl)
         
+        for i in self.sensors:
+            i.SetPosition(SENSOR_POSITIONS[i.sensor_id])
+        
         sizer = wx.BoxSizer(wx.VERTICAL)
         sizer.Add(bsizer, 0, wx.ALL | wx.EXPAND, 25)
+        sizer.Add(self.sensor_panel)
         
-        for i in self.sensors:
-            sizer.Add(i)
         
         self.SetSizer(sizer)
     
