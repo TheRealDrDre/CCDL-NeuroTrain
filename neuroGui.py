@@ -58,18 +58,16 @@ class ConnectPanel(ManagerPanel):
         self.connect_btn = wx.Button(self, 12, "Connect to the Headset", (20, 20))
         self.disconnect_btn = wx.Button(self, 11, "Disconnect from Headset", (20, 20))
         
-        spin = wx.SpinCtrlDouble(self, -1, min=1.0, max=100.0, inc=0.1)
-        spin.SetValue(1.0)
-        
+        spin = wx.SpinCtrl(self, -1, min=1, max=10)
+
         text = wx.StaticText(self, -1,
                             "Sampling interval (in seconds)",
                             (25, 15))
         self.sampling_interval_spn = spin
         self.sampling_interval_lbl = text
         
-        spin = wx.SpinCtrl(self, -1)
-        spin.SetRange(1, 100)
-        spin.SetValue(1)
+        spin = wx.SpinCtrlDouble(self, -1, min=0.1, max=0.5, inc=0.1)
+        
         
         text = wx.StaticText(self, -1,
                             "Monitoring Interval (in seconds)",
@@ -88,6 +86,7 @@ class ConnectPanel(ManagerPanel):
         """Whenever the monitor's spin control changes,
         Sets a new interval value in the manager"""
         val = float(self.monitor_interval_spn.GetValue())
+        print "The new values is %10.3f" % val
         self.manager.monitor_interval = val
 
     
@@ -268,8 +267,7 @@ class UserPanel(ManagerPanel):
         
         # Creates the sensor panel
         self.sensor_panel = wx.Panel(self)
-        
-        # Loads the sensor image
+        self.img = wx.Image("images/channels.gif", type=wx.BITMAP_TYPE_GIF)
         img = wx.Image("images/channels.gif", type=wx.BITMAP_TYPE_GIF)
         img = img.ConvertToBitmap()
         wx.StaticBitmap(self.sensor_panel, -1, img, (0, 0))

@@ -65,7 +65,7 @@ class EmotivManager(object):
         self._sampling = False  # Whether sampling or not
         self._sampling_interval = 1      # Sampling interval in secs
         self._monitoring = False
-        self._monitor_interval = 2.0
+        self._monitor_interval = 0.5
         self._listeners = dict(zip(ccdl.EVENTS, [[] for i in ccdl.EVENTS]))
         print self._listeners
         
@@ -101,6 +101,28 @@ class EmotivManager(object):
         """Loads the EDK.dll library"""
         if os.path.exists( EDK_DLL_PATH ):
             self.edk = cdll.LoadLibrary( EDK_DLL_PATH )
+            
+            # Sets the correct values for the EDK and EmoState functions
+            self.edk.EE_EmoEngineEventCreate.restype = c_void_p
+
+            self.edk.EE_EmoEngineEventGetEmoState.argtypes=[c_void_p,c_void_p]
+            self.edk.EE_EmoEngineEventGetEmoState.restype = c_int
+
+            self.edk.ES_GetTimeFromStart.argtypes=[ctypes.c_void_p]
+            self.edk.ES_GetTimeFromStart.restype = c_float
+
+            self.edk.EE_EmoStateCreate.restype = c_void_p
+
+            self.edk.ES_GetWirelessSignalStatus.restype = c_int
+            self.edk.ES_GetWirelessSignalStatus.argtypes = [c_void_p]
+
+            self.edk.ES_ExpressivIsBlink.restype = c_int
+            self.edk.ES_ExpressivIsBlink.argtypes= [c_void_p]
+
+            self.edk.ES_AffectivGetEngagementBoredomScore.restype = c_float
+            self.edk.ES_AffectivGetEngagementBoredomScore.argtypes= [c_void_p]
+
+            # Finally, flag the library as loaded.
             self.edk_loaded = True
         else:
             raise LibraryNotFoundError(EDK_DLL_PATH)
@@ -143,12 +165,17 @@ class EmotivManager(object):
         """Disconnects from the EmoEngine"""
         if self.connected:
             conn = self.edk.EE_EngineDisconnect()
+            
             #self.edk.EE_EmoStateFree(self.eState)
             #self.edk.EE_EmoEngineEventFree(self.eEvent)
-            if conn == 0:
+            if conn == variables.EDK_OK:
+                # If the disconnection was successful
                 self.connected = False
             else:
                 raise Exception("Cannot disconnect from EmoEngine")
+            
+            # Either way, we should stop sampling
+            self.monitoring = False
 
 
     @property
@@ -199,12 +226,12 @@ class EmotivManager(object):
     
     @property
     def monitor_interval(self):
-        print "Getting monitoring_interval..."
+        #print "Getting monitoring_interval..."
         return self._monitor_interval
     
     @monitor_interval.setter
     def monitor_interval(self, val):
-        print "Setting monitor_interval to: %s" % val
+        #print "Setting monitor_interval to: %s" % val
         self._monitor_interval = val
 
     @property
@@ -214,7 +241,7 @@ class EmotivManager(object):
     @monitoring.setter
     def monitoring(self, bool):
         "Sets the monitoring state"
-        print "Setting the monitoring property: %s" % bool
+        #print "Setting the monitoring property: %s" % bool
         if self._monitoring:
             if bool:
                 # Should throw exception here---
@@ -235,15 +262,23 @@ class EmotivManager(object):
         """A function that continuously monitors the status of a
         headset (and whether a user is connected or not)"""
         #print "Started monitor"
+        counter = 0
+        #self.edk.ES_Init(self.eState)
         while self.monitoring:
+            print("Sleep interval: %s" % self.monitor_interval)
             self.state = self.edk.EE_EngineGetNextEvent(self.eEvent)
-            print "Checked state: %s" % self.state
-            if self.state == 0:
-                "Checked state..."
+            print "[%d] Checked state: %s" % (counter, self.state)
+            if self.state == variables.EDK_OK:
+
                 eventType = self.edk.EE_EmoEngineEventGetType(self.eEvent)
-                self.edk.EE_EmoEngineEventGetUserId(self.eEvent, self.user)
+                #self.edk.EE_EmoEngineEventGetUserId(self.eEvent, self.user)
+                
+                
                 if eventType == variables.EE_User_Added or eventType == 16:
-                    print "User added"
+                    print "[%d] User added" % counter
+                    self.edk.EE_EmoEngineEventGetUserId(self.eEvent, self.user)
+                    self.myuser = self.userID  # To keep track
+                    print "\t User: %s" % self.userID
                     self.edk.EE_DataAcquisitionEnable(self.userID, True)
                     self.has_user = True
                     self.execute_event_functions(ccdl.USER_EVENT)
@@ -252,15 +287,50 @@ class EmotivManager(object):
                     # And then notify some other object (maybe subclass method?)
                     #
                     # And then sleep
+                
                 elif eventType == variables.EE_User_Removed:
-                    print "User removed"
+                    print "[%d] User removed" % counter
                     self.has_user = False
                     self.execute_event_functions(ccdl.USER_EVENT)
                     # Disconnect ?? Probably not. We Can keep listening
+                    
+                elif eventType == variables.EE_EmoState_Updated:
+                    print "[%d] EmoState updated: (%d)"  % (counter, eventType)
+                    
+                    self.edk.EE_EmoEngineEventGetUserId(self.eEvent, self.user)
+                    print "\tFor user: %s" %self.userID
+                    code = self.edk.EE_EmoEngineEventGetEmoState(self.eEvent, self.eState)
+                    head = self.edk.ES_GetHeadsetOn(self.eState)
+                    num = self.edk.ES_GetNumContactQualityChannels(self.eState)
+                    t = self.edk.ES_GetTimeFromStart(self.eState)
+                    level = c_int(0)
+                    max_level = c_int(10)
+                    plevel = pointer(level)
+                    pmax_level = pointer(max_level)
+                    #k = self.edk.ES_GetBatteryChargeLevel(plevel, pmax_level)
+                    sr = c_uint(0)
+                        
+                    self.edk.EE_DataGetSamplingRate(self.userID, pointer(sr))
+                    print("\tSamping rate: %s" % sr)
+                    print "\tCode: %d, %s" % (code, code is variables.EDK_OK)
+                    print "\tHeadset on: %d" % head
+                    print "\tNum of channels: %d" % num
+                    print "\tTime from start: %10.3f/%s" % (t, t)
+                    #print "\tBattery: %s/%s" % (level, max_level)
+                    #print "\tBattery: %s/%s   %s" % (plevel, pmax_level, k)
+                
                 else:
-                    print "Unknown event: %d" % eventType 
-            print "Sleeping now for %ss" % self.monitor_interval
+                    print "[%d] Unknown event: %d" % (counter, eventType)
+            
+            elif self.state == variables.EDK_NO_EVENT:
+                print "[%d] No event" % counter
+            else:
+                print "[%d] Unknown state %d" % (counter, self.state)
+                
+                
+            #print "Sleeping now for %ss" % self.monitor_interval
             time.sleep(self.monitor_interval)
+            counter += 1
 
     @property
     def has_user(self):

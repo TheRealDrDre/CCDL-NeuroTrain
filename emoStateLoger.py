@@ -196,7 +196,7 @@ while (1):
             logEmoState(userID,eState)   
     elif state != 0x0600:
         print "Internal error in Emotiv Engine ! "
-    time.sleep(0.1)
+    time.sleep(1.0)
 #---------------------------------------------------------------------------------------------------------------------------------------------------------------
 libEDK.EE_EngineDisconnect()
 libEDK.EE_EmoStateFree(eState)

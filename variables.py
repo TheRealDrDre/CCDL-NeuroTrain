@@ -42,6 +42,7 @@ EE_Cognitiv_Event = 0x0100
 EE_Expressiv_Event = 0x0200 
 EE_Internal_State_Changed = 0x0400 
 EE_Emulator_Error = 0x0001
+EDK_NO_EVENT = 0x0600
 
 ## Error codes
 
@@ -54,3 +55,5 @@ EDK_BUFFER_TOO_SMALL = 0x0300
 EDK_OUT_OF_RANGE = 0x0301  
 EDK_INVALID_PARAMETER = 0x0302 
 EDK_PARAMETER_LOCKED = 0x0303
+
+
