@@ -265,7 +265,7 @@ class UserPanel(ManagerPanel):
     
     def __init__(self, parent, manager):
         ManagerPanel.__init__(self, parent, manager,
-                              monitored_events=(ccdl.USER_EVENT))
+                              monitored_events=(ccdl.USER_EVENT, ccdl.MONITORING_EVENT))
     def create_objects(self):
         """Creates the objects"""
         self.user_lbl = wx.StaticText(self, -1, "No User Found")

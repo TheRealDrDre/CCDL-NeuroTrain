@@ -381,12 +381,12 @@ class EmotivManager(object):
     
     def add_listener(self, id, obj):
         """Adds a listener"""
-        print "Trying to add listener %s" % obj
+        
         if id in ccdl.EVENTS:
             if type(obj) in (types.FunctionType, types.MethodType):
-            #if obj is not None and "refresh" in obj.__dict__:
                 if obj not in self._listeners[id]:
-                    self._listeners.Add(obj)
+                    #print "Adding listener %s" % obj
+                    self._listeners[id].append(obj)
             else:
                 
                 # Maybe throw an exception if it's not a function?
