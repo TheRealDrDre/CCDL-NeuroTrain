@@ -51,7 +51,7 @@ class ConnectPanel(ManagerPanel):
     def __init__(self, parent, manager):
         """A ManagerPanel that monitors connection events"""
         ManagerPanel.__init__(self, parent, manager,
-                              monitored_events=(ccdl.CONNECTION_EVENT))
+                              monitored_events=(ccdl.CONNECTION_EVENT,))
     
     def create_objects(self):
         """Creates the internal objects"""
@@ -86,7 +86,6 @@ class ConnectPanel(ManagerPanel):
         """Whenever the monitor's spin control changes,
         Sets a new interval value in the manager"""
         val = float(self.monitor_interval_spn.GetValue())
-        print "The new values is %10.3f" % val
         self.manager.monitor_interval = val
 
     
@@ -236,18 +235,24 @@ class SensorPanel(wx.Panel):
     
     @property
     def sensor_name(self):
+        """Returns the sensor name"""
         return self._sensor_name
     
     @sensor_name.setter
     def sensor_name(self, name):
+        """Sets the sensor name (nothing else)"""
         self._sensor_name = name
         
     @property
     def sensor_enabled(self):
+        """Returns whether the sensor is enabled or not"""
         return self._sensor_enabled
     
     @sensor_enabled.setter
     def sensor_enabled(self, bool):
+        """Sets the state of the sensor (enabled or not), and changes
+        the state of the GUI components accordingly
+        """
         if bool:
             self._checkbox.Enable()
         else:

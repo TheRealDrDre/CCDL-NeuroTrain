@@ -10,6 +10,7 @@ from ctypes import *
 from numpy import *
 import variables
 import time
+import types
 from ctypes.util import find_library
 
 
@@ -234,16 +235,18 @@ class EmotivManager(object):
     
     @property
     def monitor_interval(self):
-        #print "Getting monitoring_interval..."
+        """Returns the current monitor interval"""
         return self._monitor_interval
     
     @monitor_interval.setter
     def monitor_interval(self, val):
-        #print "Setting monitor_interval to: %s" % val
+        """Sets the monitor_interval to val"""
         self._monitor_interval = val
 
     @property
     def monitoring(self):
+        """Returns True if the app is monitoring the headset,
+        and False otherwise"""
         return self._monitoring
 
     @monitoring.setter
@@ -267,29 +270,39 @@ class EmotivManager(object):
     
     
     def monitor(self):
-        """A function that continuously monitors the status of a
+        """The one function that continuously monitors the status of a
         headset (and whether a user is connected or not)"""
-        #print "Started monitor"
+
         counter = 0
-        self.state = self.edk.EE_EngineGetNextEvent(self.eEvent)
-        #self.edk.ES_Init(self.eState)
+        
         while self.monitoring:
+            
+            # Retrieves the next event
             state = self.edk.EE_EngineGetNextEvent(self.eEvent)
             print "[%d] Checked state: %s" % (counter, state)
 
             if state == variables.EDK_OK:
+                # If we received an event, it means that we must have an user
+                # (unless the event was UserRemoved)
+                if not self.has_user:
+                    self.has_user = True
+                    
+                    
+                # if the call was successful, then we do have a new
+                # event, and we now need to examine its type.
+                
                 eventType = self.edk.EE_EmoEngineEventGetType(self.eEvent)
-                #self.edk.EE_EmoEngineEventGetUserId(self.eEvent, self.user)
                 
-                
-                if eventType == variables.EE_User_Added or eventType == 16:
+                if eventType == variables.EE_User_Added:   # Code 16, 0x0010
                     print "[%d] User added" % counter
                     self.edk.EE_EmoEngineEventGetUserId(self.eEvent, self.user)
-                    self.myuser = self.userID  # To keep track
+
                     print "\t User: %s" % self.userID
-                    self.edk.EE_DataAcquisitionEnable(self.userID, True)
-                    self.has_user = True
-                    self.execute_event_functions(ccdl.USER_EVENT)
+                    
+                    # This function is actually for sampling
+                    
+                    #self.edk.EE_DataAcquisitionEnable(self.userID, True)                    
+                    
                     # Here it should check the status of the given electrodes
                     #
                     # And then notify some other object (maybe subclass method?)
@@ -299,8 +312,6 @@ class EmotivManager(object):
                 elif eventType == variables.EE_User_Removed:
                     print "[%d] User removed" % counter
                     self.has_user = False
-                    self.execute_event_functions(ccdl.USER_EVENT)
-                    # Disconnect ?? Probably not. We Can keep listening
                     
                 elif eventType == variables.EE_EmoState_Updated:
                     print "[%d] EmoState updated: (%d)"  % (counter, eventType)
@@ -325,12 +336,14 @@ class EmotivManager(object):
                     print "\tNum of channels: %d" % num
                     print "\tTime from start: %10.3f/%s" % (t, t)
                     print "\tBattery: %s/%s" % (level.value, max_level.value)
-                    #print "\tBattery: %s/%s   %s" % (plevel, pmax_level, k)
                 
                 else:
                     print "[%d] Unknown event: %d" % (counter, eventType)
             
             elif state == variables.EDK_NO_EVENT:
+                # If the state is NO-EVENT, then it likely means that
+                # there is no headset connected, and no data can be acquired.
+                self.has_user = False
                 pass
                 #print "[%d] No event" % counter
                 
@@ -352,21 +365,26 @@ class EmotivManager(object):
     def has_user(self, val):
         """Sets the user (only if the manager is already connected)"""
         if self.connected:
+            # If connected, change the value and notify
+            # all the relevant listeners
             self._has_user = val
+            self.execute_event_functions(ccdl.USER_EVENT)
+            
         else:
-            # here should raise some exceptions
+            # here should raise some exceptions --- cannot
+            # change the user if we are not event connected!
             pass
     
-    ## EVENTS MODEL
+    # ------------------------------------------------------------- #
+    # EVENTS MODEL
+    # ------------------------------------------------------------- #
     
-    def add_listener(id, obj):
+    def add_listener(self, id, obj):
         """Adds a listener"""
+        print "Trying to add listener %s" % obj
         if id in ccdl.EVENTS:
-            if obj is not None and "refresh" in obj.__dict__:
-                #
-                # Or we could add functions and simply add elements
-                # iff type(obj) in (types.FunctionType, types.MethodType)
-                #
+            if type(obj) in (types.FunctionType, types.MethodType):
+            #if obj is not None and "refresh" in obj.__dict__:
                 if obj not in self._listeners[id]:
                     self._listeners.Add(obj)
             else:
@@ -407,7 +425,7 @@ class ManagerWrapper(object):
     def __init__(self, manager=None, monitored_events=()):
         """Sets the manager"""
         self._manager = manager
-        self._monitored_events = monitored_events
+        self.monitored_events = monitored_events
     
     def refresh(self):
         """A method that should be called by the manager whenever
@@ -432,9 +450,10 @@ class ManagerWrapper(object):
     
     @monitored_events.setter
     def monitored_events(self, event_ids):
+        print "Setting the monitoring events %s for object %s" % (event_ids, self)
         self._monitored_events = tuple(event_ids)
         if self.manager is not None:
-            for i in events_id:
+            for i in event_ids:
                 self.manager.add_listener(i, self.refresh)
     
     
