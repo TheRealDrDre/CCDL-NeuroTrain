@@ -67,7 +67,6 @@ class EmotivManager(object):
         self._monitoring = False
         self._monitor_interval = 0.5
         self._listeners = dict(zip(ccdl.EVENTS, [[] for i in ccdl.EVENTS]))
-        print self._listeners
         
         ## Emotive C structures
         ##
@@ -105,10 +104,11 @@ class EmotivManager(object):
             # Sets the correct values for the EDK and EmoState functions
             self.edk.EE_EmoEngineEventCreate.restype = c_void_p
 
-            self.edk.EE_EmoEngineEventGetEmoState.argtypes=[c_void_p,c_void_p]
+            self.edk.EE_EmoEngineEventGetEmoState.argtypes = [c_void_p,
+                                                              c_void_p]
             self.edk.EE_EmoEngineEventGetEmoState.restype = c_int
 
-            self.edk.ES_GetTimeFromStart.argtypes=[ctypes.c_void_p]
+            self.edk.ES_GetTimeFromStart.argtypes = [c_void_p]
             self.edk.ES_GetTimeFromStart.restype = c_float
 
             self.edk.EE_EmoStateCreate.restype = c_void_p
@@ -117,10 +117,15 @@ class EmotivManager(object):
             self.edk.ES_GetWirelessSignalStatus.argtypes = [c_void_p]
 
             self.edk.ES_ExpressivIsBlink.restype = c_int
-            self.edk.ES_ExpressivIsBlink.argtypes= [c_void_p]
+            self.edk.ES_ExpressivIsBlink.argtypes = [c_void_p]
 
             self.edk.ES_AffectivGetEngagementBoredomScore.restype = c_float
-            self.edk.ES_AffectivGetEngagementBoredomScore.argtypes= [c_void_p]
+            self.edk.ES_AffectivGetEngagementBoredomScore.argtypes = [c_void_p]
+            
+            self.edk.ES_GetBatteryChargeLevel.restype = c_void_p
+            self.edk.ES_GetBatteryChargeLevel.argtypes = [c_void_p, 
+                                                          POINTER(c_int),
+                                                          POINTER(c_int)]
 
             # Finally, flag the library as loaded.
             self.edk_loaded = True
@@ -145,14 +150,12 @@ class EmotivManager(object):
             # attempt to connect to an Emotive engine
             conn = self.edk.EE_EngineConnect("Emotiv Systems-5")
             
-            if conn == 0:
+            if conn == variables.EDK_OK:
                 # If the result is 0, the connection was successful.
                 self.connected = True
-                self.hData = self.edk.EE_DataCreate()
-                self.edk.EE_DataSetBufferSizeInSec(c_float(1))  # This needs to change to samplinh interval
                 
-                eventType = self.edk.EE_EmoEngineEventGetType(self.eEvent)
-                print "State after connect: %d" % eventType
+                #eventType = self.edk.EE_EmoEngineEventGetType(self.eEvent)
+                #print "State after connect: %d" % eventType
                 
             else:
                 # If not, we failed, and we need to set connected back
@@ -207,13 +210,18 @@ class EmotivManager(object):
                     self._sampling = bool
             else:
                 if bool:
-                    self._sampler = Thread(self.sample)
+                    # Prepares the data buffer
+                    self.hData = self.edk.EE_DataCreate()
+                    self.edk.EE_DataSetBufferSizeInSec(c_float(self.sampling_interval))  # This needs to change to sampling interval
+                    
                     # Here we start the thread
+                    self._sampler = Thread(self.sample)
                     self._sampler.start()
         
     def sample(self):
         """Samples data from the headset every sampling interval"""
         if self.has_user and self.sampling:
+            
             # Acquires data here
             # ...
             # And then notifies some other object (GUI) that
@@ -263,13 +271,13 @@ class EmotivManager(object):
         headset (and whether a user is connected or not)"""
         #print "Started monitor"
         counter = 0
+        self.state = self.edk.EE_EngineGetNextEvent(self.eEvent)
         #self.edk.ES_Init(self.eState)
         while self.monitoring:
-            print("Sleep interval: %s" % self.monitor_interval)
-            self.state = self.edk.EE_EngineGetNextEvent(self.eEvent)
-            print "[%d] Checked state: %s" % (counter, self.state)
-            if self.state == variables.EDK_OK:
+            state = self.edk.EE_EngineGetNextEvent(self.eEvent)
+            print "[%d] Checked state: %s" % (counter, state)
 
+            if state == variables.EDK_OK:
                 eventType = self.edk.EE_EmoEngineEventGetType(self.eEvent)
                 #self.edk.EE_EmoEngineEventGetUserId(self.eEvent, self.user)
                 
@@ -307,7 +315,7 @@ class EmotivManager(object):
                     max_level = c_int(10)
                     plevel = pointer(level)
                     pmax_level = pointer(max_level)
-                    #k = self.edk.ES_GetBatteryChargeLevel(plevel, pmax_level)
+                    k = self.edk.ES_GetBatteryChargeLevel(self.eState, plevel, pmax_level)
                     sr = c_uint(0)
                         
                     self.edk.EE_DataGetSamplingRate(self.userID, pointer(sr))
@@ -316,15 +324,18 @@ class EmotivManager(object):
                     print "\tHeadset on: %d" % head
                     print "\tNum of channels: %d" % num
                     print "\tTime from start: %10.3f/%s" % (t, t)
-                    #print "\tBattery: %s/%s" % (level, max_level)
+                    print "\tBattery: %s/%s" % (level.value, max_level.value)
                     #print "\tBattery: %s/%s   %s" % (plevel, pmax_level, k)
                 
                 else:
                     print "[%d] Unknown event: %d" % (counter, eventType)
             
-            elif self.state == variables.EDK_NO_EVENT:
-                print "[%d] No event" % counter
+            elif state == variables.EDK_NO_EVENT:
+                pass
+                #print "[%d] No event" % counter
+                
             else:
+                # Here should raise an exception (probably).
                 print "[%d] Unknown state %d" % (counter, self.state)
                 
                 
