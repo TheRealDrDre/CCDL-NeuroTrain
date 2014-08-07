@@ -66,7 +66,7 @@ class EmotivManager(object):
         self._sampling = False  # Whether sampling or not
         self._sampling_interval = 1      # Sampling interval in secs
         self._monitoring = False
-        self._monitor_interval = 0.5
+        self._monitor_interval = 0.2
         self._listeners = dict(zip(ccdl.EVENTS, [[] for i in ccdl.EVENTS]))
         
         ## Emotive C structures

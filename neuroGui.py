@@ -267,24 +267,35 @@ class UserPanel(ManagerPanel):
     def __init__(self, parent, manager):
         ManagerPanel.__init__(self, parent, manager,
                               monitored_events=(ccdl.USER_EVENT, ccdl.MONITORING_EVENT))
+        #self.Bind(wx.EVT_ERASE_BACKGROUND, self.on_erase_background)
+        
     def create_objects(self):
         """Creates the objects"""
         self.user_lbl = wx.StaticText(self, -1, "No User Found")
-        
+
+        img = wx.Image("images/channels.gif", type=wx.BITMAP_TYPE_GIF)
+        img = img.ConvertToBitmap()
+        self.enabled_img = img
+        self.disabled_img = self.enabled_img.ConvertToDisabled(255)
+        self._background_bitmap = self.enabled_img
+
         # Creates the sensor panel
         self.sensor_panel = wx.Panel(self)
-        self.enabled_img = wx.Image("images/channels.gif", type=wx.BITMAP_TYPE_GIF)
-        #self.disabled_img = copy.copy(self.enabled_img)
-        #self.disabled_img.Replace(0, 0, 0, 128, 128, 128)
-        self.disabled_img = self.enabled_img.ConvertToDisabled(0)
-        self.bitmap = wx.StaticBitmap(self.sensor_panel, -1,
-                                      wx.BitmapFromImage(self.enabled_img),
-                                      (0, 0))
+        self.sensor_panel.Bind(wx.EVT_ERASE_BACKGROUND, self.on_erase_background)
         
         # Creates the sensors and adds them to the sensor panel
         sensors = [SensorPanel(self.sensor_panel, x) for x in SENSORS]
         self.sensors = tuple(sensors)
-        
+    
+    @property    
+    def background_bitmap(self):
+        return self._background_bitmap
+    
+    @background_bitmap.setter
+    def background_bitmap(self, bmp):
+        if self._background_bitmap is not bmp:
+            self._background_bitmap = bmp
+            self.Update()
         
     def do_layout(self):
         """Lays out the components"""
@@ -302,30 +313,42 @@ class UserPanel(ManagerPanel):
         
         self.SetSizer(sizer)
     
+    def on_erase_background(self, evt):
+        """Redraws the background image"""
+        dc = evt.GetDC()
+ 
+        if not dc:
+            dc = wx.ClientDC(self)
+            rect = self.GetUpdateRegion().GetBox()
+            dc.SetClippingRect(rect)
+        dc.Clear()
+        dc.DrawBitmap(self.background_bitmap, 0, 0)
+    
     def set_all_enabled(self, bool):
         """Enables or disables all components"""
         if bool:
             self.user_lbl.Enable()
-            self.bitmap.Enable()
-            #self.bitmap.SetBitmap(wx.BitmapFromImage(self.disabled_img))
             for i in self.sensors:
                 i.Enable()
             
         else:
             self.user_lbl.Disable()
-            self.bitmap.Disable()
-            #self.bitmap.SetBitmap(wx.BitmapFromImage(self.enabled_img))
             for i in self.sensors:
                 i.Disable()
             
     
     def refresh(self):
+        """Updates the components based on the manager's state"""
         if self.manager.has_user:
             self.user_lbl.SetLabel("Headset Connected")
             self.set_all_enabled(True)
+            self.background_bitmap = self.enabled_img
         else:
             self.user_lbl.SetLabel("No Headset Found")
             self.set_all_enabled(False)
+            self.background_bitmap = self.disabled_img
+            
+        self.Update()
 
 
 class NeuroTrainFrame(wx.Frame):
@@ -361,12 +384,13 @@ class NeuroTrainFrame(wx.Frame):
         self.Bind(wx.EVT_CLOSE, self.on_quit)
         
     def on_quit(self, event):
+        """Sets all the variables that control the threads to false
+        before quitting"""
         self.manager.monitoring = False
-        #self.manager.has_user = False
-        #self.manager.sampling = False
-        #self.Close()
+        self.manager.has_user = False
+        self.manager.sampling = False
         self.Destroy()
-        print "Quitting..."
+        #print "Quitting..."
     
 
 
