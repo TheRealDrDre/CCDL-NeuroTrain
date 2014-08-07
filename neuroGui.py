@@ -59,7 +59,7 @@ class ConnectPanel(ManagerPanel):
         self.connect_btn = wx.Button(self, 12, "Connect to the Headset", (20, 20))
         self.disconnect_btn = wx.Button(self, 11, "Disconnect from Headset", (20, 20))
         
-        spin = wx.SpinCtrl(self, -1, min=1, max=10)
+        spin = wx.SpinCtrl(self, -1, min=1, max=10, size=(75, 25))
 
         text = wx.StaticText(self, -1,
                             "Sampling interval (in seconds)",
@@ -67,7 +67,8 @@ class ConnectPanel(ManagerPanel):
         self.sampling_interval_spn = spin
         self.sampling_interval_lbl = text
         
-        spin = wx.SpinCtrlDouble(self, -1, min=0.1, max=0.5, inc=0.1)
+        spin = wx.SpinCtrlDouble(self, -1, min=0.1, max=0.5, inc=0.1,
+                                 size=(75, 25))
         
         
         text = wx.StaticText(self, -1,
@@ -216,6 +217,7 @@ class SensorPanel(wx.Panel):
                           size=size)
         
         self._sensor_id = sensor_id
+        #self.SetAlignment(wx.ALIGN_LEFT)
         if sensor_id in SENSORS:
             self._sensor_name = SENSOR_NAMES[sensor_id]
         else:
@@ -286,16 +288,20 @@ class UserPanel(ManagerPanel):
         # Creates the sensors and adds them to the sensor panel
         sensors = [SensorPanel(self.sensor_panel, x) for x in SENSORS]
         self.sensors = tuple(sensors)
+        self.SetSize(img.GetSize())
     
     @property    
     def background_bitmap(self):
+        """Returns the background image"""
         return self._background_bitmap
     
     @background_bitmap.setter
     def background_bitmap(self, bmp):
+        """Sets a new background images and forces a redraw
+        of the sensor sub-panel"""
         if self._background_bitmap is not bmp:
             self._background_bitmap = bmp
-            self.Update()
+            self.sensor_panel.Refresh()
         
     def do_layout(self):
         """Lays out the components"""
@@ -311,7 +317,7 @@ class UserPanel(ManagerPanel):
         sizer.Add(self.sensor_panel)
         
         
-        self.SetSizer(sizer)
+        self.SetSizerAndFit(sizer)
     
     def on_erase_background(self, evt):
         """Redraws the background image"""
@@ -350,6 +356,9 @@ class UserPanel(ManagerPanel):
             
         self.Update()
 
+class HeadsetPanel(ManagerPanel):
+    pass
+
 
 class NeuroTrainFrame(wx.Frame):
     """The main frame"""
@@ -360,6 +369,7 @@ class NeuroTrainFrame(wx.Frame):
         #ManagerWrapper.__init__()
         self.create_objects()
         self.do_layout()
+        self.Fit()
         self.Show()
 
     def create_objects(self):
