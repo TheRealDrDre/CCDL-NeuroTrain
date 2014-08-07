@@ -4,6 +4,7 @@
 
 import wx
 import ccdl
+import copy
 from variables import *
 from manager import EmotivManager, ManagerWrapper
 
@@ -272,10 +273,13 @@ class UserPanel(ManagerPanel):
         
         # Creates the sensor panel
         self.sensor_panel = wx.Panel(self)
-        self.img = wx.Image("images/channels.gif", type=wx.BITMAP_TYPE_GIF)
-        img = wx.Image("images/channels.gif", type=wx.BITMAP_TYPE_GIF)
-        img = img.ConvertToBitmap()
-        wx.StaticBitmap(self.sensor_panel, -1, img, (0, 0))
+        self.enabled_img = wx.Image("images/channels.gif", type=wx.BITMAP_TYPE_GIF)
+        #self.disabled_img = copy.copy(self.enabled_img)
+        #self.disabled_img.Replace(0, 0, 0, 128, 128, 128)
+        self.disabled_img = self.enabled_img.ConvertToDisabled(0)
+        self.bitmap = wx.StaticBitmap(self.sensor_panel, -1,
+                                      wx.BitmapFromImage(self.enabled_img),
+                                      (0, 0))
         
         # Creates the sensors and adds them to the sensor panel
         sensors = [SensorPanel(self.sensor_panel, x) for x in SENSORS]
@@ -302,11 +306,15 @@ class UserPanel(ManagerPanel):
         """Enables or disables all components"""
         if bool:
             self.user_lbl.Enable()
+            self.bitmap.Enable()
+            #self.bitmap.SetBitmap(wx.BitmapFromImage(self.disabled_img))
             for i in self.sensors:
                 i.Enable()
             
         else:
             self.user_lbl.Disable()
+            self.bitmap.Disable()
+            #self.bitmap.SetBitmap(wx.BitmapFromImage(self.enabled_img))
             for i in self.sensors:
                 i.Disable()
             

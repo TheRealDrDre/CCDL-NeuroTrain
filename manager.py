@@ -295,20 +295,12 @@ class EmotivManager(object):
                 
                 if eventType == variables.EE_User_Added:   # Code 16, 0x0010
                     print "[%d] User added" % counter
-                    self.edk.EE_EmoEngineEventGetUserId(self.eEvent, self.user)
-
-                    print "\t User: %s" % self.userID
+                    if not self.has_user:
+                        self.has_user = True
                     
-                    # This function is actually for sampling
+                    # Sets the user ID
+                    self.edk.EE_EmoEngineEventGetUserId(self.eEvent, self.user)                    
                     
-                    #self.edk.EE_DataAcquisitionEnable(self.userID, True)                    
-                    
-                    # Here it should check the status of the given electrodes
-                    #
-                    # And then notify some other object (maybe subclass method?)
-                    #
-                    # And then sleep
-                
                 elif eventType == variables.EE_User_Removed:
                     print "[%d] User removed" % counter
                     self.has_user = False
@@ -316,6 +308,9 @@ class EmotivManager(object):
                 elif eventType == variables.EE_EmoState_Updated:
                     print "[%d] EmoState updated: (%d)"  % (counter, eventType)
                     
+                    self.execute_event_functions(ccdl.MONITORING_EVENT)
+                    
+                    # This is a bunch of quick debug code.
                     self.edk.EE_EmoEngineEventGetUserId(self.eEvent, self.user)
                     print "\tFor user: %s" %self.userID
                     code = self.edk.EE_EmoEngineEventGetEmoState(self.eEvent, self.eState)
@@ -338,27 +333,25 @@ class EmotivManager(object):
                     print "\tBattery: %s/%s" % (level.value, max_level.value)
                 
                 else:
-                    print "[%d] Unknown event: %d" % (counter, eventType)
+                    # Just for debug here.
+                    print "[%d] Other event: %d" % (counter, eventType)
             
             elif state == variables.EDK_NO_EVENT:
                 # If the state is NO-EVENT, then it likely means that
                 # there is no headset connected, and no data can be acquired.
                 self.has_user = False
-                pass
-                #print "[%d] No event" % counter
-                
+
             else:
                 # Here should raise an exception (probably).
                 print "[%d] Unknown state %d" % (counter, self.state)
                 
-                
-            #print "Sleeping now for %ss" % self.monitor_interval
+            # After all of this, just sleeps for the amount necessary
             time.sleep(self.monitor_interval)
             counter += 1
 
     @property
     def has_user(self):
-        """Whether a user is connected or not"""
+        """Whether a user (a headset) is connected or not"""
         return self._has_user
     
     @has_user.setter
@@ -407,15 +400,19 @@ class EmotivManager(object):
             raise ccdl.EventError(event_id)
             
 
+    # ------------------------------------------------------------- #
+    # CLEAN OBJECT DESTRUCTION
+    # ------------------------------------------------------------- #
+
     def cleanup(self):
         """Cleanly removes C++ allocated objects"""
         self.edk.EE_EmoStateFree(self.eState)
         self.edk.EE_EmoEngineEventFree(self.eEvent)
         
     def __del__(self):
-        """Disconnects before destroying the object"""
+        """Disconnects and frees memory before destroying the object"""
         if self.connected:
-            conn = self.edk.EE_EngineDisconnect()
+            self.edk.EE_EngineDisconnect()
             self.cleanup()
             
             
