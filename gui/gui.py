@@ -8,6 +8,8 @@ import copy
 from core.variables import *
 from core.manager import EmotivManager, ManagerWrapper
 
+__dir__ = ["SENSOR_NAMES", "ManagerPanel", "ConnectPanel", "UserPanel",
+           "HeadsetPanel"]
 
 SENSOR_NAMES = {ED_AF3 : "AF3", ED_F7 : "F7", ED_F3 : "F3", ED_FC5 : "FC5",
                 ED_T7 : "T7", ED_P7 : "P7", ED_O1 : "O1", ED_O2 : "O2",
@@ -354,8 +356,37 @@ class UserPanel(ManagerPanel):
         self.Update()
 
 class HeadsetPanel(ManagerPanel):
-    pass
+    """A class that visualizes information about a headset"""
+    def __init__(self, parent, manager):
+        ManagerPanel.__init__(self, parent, manager,
+                              monitored_events=(ccdl.USER_EVENT,
+                                                ccdl.MONITORING_EVENT))
+        
+    def create_objects(self):
+        self._battery_lbl = wx.StaticText(self, -1, "Battery Level:")
+        self._wireless_lbl = wx.StaticText(self, -1, "Wireless Signal Strength:")
+        self._sampling_rate_lbl = wx.StaticText(self, -1, "Sampling Rate:")
+        self._num_channels_lbl = wx.StaticText(self, -1, "Num of Available Channels:")
+        self._time_lbl = wx.StaticText(self, -1, "Time from start:")
+        
+        self.all_components = (self._battery_lbl, self._wireless_lbl,
+                               self._sampling_rate_lbl, self._time_lbl,
+                               self._num_channels_lbl)
 
+    def do_layout(self):
+        sizer = wx.BoxSizer(wx.VERTICAL)
+        for c in self.all_components:
+            sizer.Add(c)
+        self.SetSizerAndFit(sizer)
+        
+
+    def refresh(self):
+        if self.manager.has_user:
+            for c in self.all_components:
+                c.Enable()
+            else:
+                c.Disable()
+            
 
 class NeuroTrainFrame(wx.Frame):
     """The main frame"""
@@ -376,13 +407,18 @@ class NeuroTrainFrame(wx.Frame):
         self.manager = EmotivManager()
         self.connect_panel = ConnectPanel(self, self.manager)
         self.user_panel = UserPanel(self, self.manager)
+        self.headset_panel = HeadsetPanel(self, self.manager)
         
         
     def do_layout(self):
         """Lays out the interface"""
+        hbox = wx.BoxSizer(wx.HORIZONTAL)
+        hbox.Add(self.user_panel)
+        hbox.Add(self.headset_panel)
+        
         box = wx.BoxSizer(wx.VERTICAL)
         box.Add(self.connect_panel)
-        box.Add(self.user_panel)
+        box.Add(hbox)
         
         metabox = wx.BoxSizer(wx.HORIZONTAL)
         metabox.Add(box, wx.ALIGN_CENTER, 10)
@@ -397,11 +433,3 @@ class NeuroTrainFrame(wx.Frame):
         self.manager.has_user = False
         self.manager.sampling = False
         self.Destroy()
-        #print "Quitting..."
-    
-
-
-if __name__ == '__main__':
-    app = wx.App()
-    frame = NeuroTrainFrame(None, title="NeuroTrain")
-    app.MainLoop()
