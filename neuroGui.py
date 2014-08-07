@@ -3,14 +3,11 @@
 # Neurofeedback GUI
 
 import wx
-import ccdl
+import core.ccdl as ccdl
 import copy
-from variables import *
-from manager import EmotivManager, ManagerWrapper
+from core.variables import *
+from core.manager import EmotivManager, ManagerWrapper
 
-
-SENSORS = (ED_AF3, ED_F7, ED_F3, ED_FC5, ED_T7, ED_P7, ED_O1, ED_O2,
-           ED_P8, ED_T8, ED_FC6, ED_F4, ED_F8, ED_AF4)
 
 SENSOR_NAMES = {ED_AF3 : "AF3", ED_F7 : "F7", ED_F3 : "F3", ED_FC5 : "FC5",
                 ED_T7 : "T7", ED_P7 : "P7", ED_O1 : "O1", ED_O2 : "O2",
