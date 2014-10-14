@@ -5,6 +5,7 @@
 import wx
 import core.ccdl as ccdl
 import copy
+from ctypes import *
 from core.variables import *
 from core.manager import EmotivManager, ManagerWrapper
 
@@ -25,13 +26,24 @@ SENSOR_POSITIONS = {ED_AF3 : (85, 62), ED_F7 : (37, 113), ED_F3 : (118, 109),
 
 class ManagerPanel(wx.Panel, ManagerWrapper):
     """A subclass for all panels that wraps around an Emotiv Manager"""
-    def __init__(self, parent, manager, monitored_events=()):
+    def __init__(self, parent, manager, monitored_events=(),
+                 manager_state=None):
         wx.Panel.__init__(self, parent, -1,
                          style=wx.NO_FULL_REPAINT_ON_RESIZE)
-        ManagerWrapper.__init__(self, manager, monitored_events=monitored_events)
+        ManagerWrapper.__init__(self, manager,
+                                monitored_events=monitored_events)
+        self._manager_state = manager_state # A variable to store the previous state
         self.create_objects()
         self.do_layout()
         self.refresh()    
+    
+    @property
+    def manager_state(self):
+        return self._manager_state
+    
+    @manager_state.setter
+    def manager_state(self, val):
+        self._manager_state = val
     
     def create_objects(self):
         """Creates the objects that will be accessed later"""
@@ -267,6 +279,7 @@ class UserPanel(ManagerPanel):
     
     def __init__(self, parent, manager):
         ManagerPanel.__init__(self, parent, manager,
+                              manager_state=True,
                               monitored_events=(ccdl.USER_EVENT, ccdl.MONITORING_EVENT))
         #self.Bind(wx.EVT_ERASE_BACKGROUND, self.on_erase_background)
         
@@ -344,21 +357,24 @@ class UserPanel(ManagerPanel):
     
     def refresh(self):
         """Updates the components based on the manager's state"""
-        if self.manager.has_user:
-            self.user_lbl.SetLabel("Headset Connected")
-            self.set_all_enabled(True)
-            self.background_bitmap = self.enabled_img
-        else:
-            self.user_lbl.SetLabel("No Headset Found")
-            self.set_all_enabled(False)
-            self.background_bitmap = self.disabled_img
-            
-        self.Update()
+        has_user = self.manager.has_user
+        if has_user is not self.manager_state:
+            self.manager_state = has_user
+            if self.manager.has_user:
+                self.user_lbl.SetLabel("Headset Connected")
+                self.set_all_enabled(True)
+                self.background_bitmap = self.enabled_img
+            else:
+                self.user_lbl.SetLabel("No Headset Found")
+                self.set_all_enabled(False)
+                self.background_bitmap = self.disabled_img
+            self.Update()
 
 class HeadsetPanel(ManagerPanel):
     """A class that visualizes information about a headset"""
     def __init__(self, parent, manager):
         ManagerPanel.__init__(self, parent, manager,
+                              manager_state=True,
                               monitored_events=(ccdl.USER_EVENT,
                                                 ccdl.MONITORING_EVENT))
         
@@ -369,23 +385,55 @@ class HeadsetPanel(ManagerPanel):
         self._num_channels_lbl = wx.StaticText(self, -1, "Num of Available Channels:")
         self._time_lbl = wx.StaticText(self, -1, "Time from start:")
         
+        # Gauges
+        self._battery_gge = wx.Gauge(self, -1, 5, size=(100, 20))
+        self._wireless_gge= wx.Gauge(self, -1, 4, size=(100, 20))
+        
         self.all_components = (self._battery_lbl, self._wireless_lbl,
                                self._sampling_rate_lbl, self._time_lbl,
-                               self._num_channels_lbl)
+                               self._num_channels_lbl,
+                               # Gauges
+                               self._battery_gge, self._wireless_gge,
+                               )
 
     def do_layout(self):
         sizer = wx.BoxSizer(wx.VERTICAL)
         for c in self.all_components:
             sizer.Add(c)
         self.SetSizerAndFit(sizer)
+        self.refresh()
         
 
+    def update_gauges(self):
+        mgr = self.manager
+        e_state = mgr.eState
+        num = mgr.edk.ES_GetNumContactQualityChannels(e_state)
+        t = mgr.edk.ES_GetTimeFromStart(e_state)
+        level = c_int(0)
+        max_level = c_int(10)
+        plevel = pointer(level)
+        pmax_level = pointer(max_level)
+        battery = mgr.edk.ES_GetBatteryChargeLevel(e_state, plevel, pmax_level)
+        self._battery_gge.SetValue(level.value)
+        self._battery_gge.SetRange(max_level.value)
+        
+        signal = mgr.edk.ES_GetWirelessSignalStatus(e_state)
+        self._wireless_gge.SetValue(level.value)
+        #self._battery_gge.SetRange(max_level.value)
+
     def refresh(self):
-        if self.manager.has_user:
-            for c in self.all_components:
-                c.Enable()
+        t = self.manager.edk.ES_GetTimeFromStart(self.manager.eState)
+        
+        has_user = self.manager.has_user
+        if has_user is not self.manager_state:
+            if has_user:
+                print("\tTIME: %10.3f" % t)
+                self.update_gauges()
+                for c in self.all_components:
+                    c.Enable()
             else:
-                c.Disable()
+                for c in self.all_components:
+                    c.Disable()
             
 
 class NeuroTrainFrame(wx.Frame):

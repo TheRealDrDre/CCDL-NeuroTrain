@@ -1,5 +1,8 @@
-## ----
-## Python GUI for neurofeedback
+## ---------------------------------------------------------------- ##
+## A generic manager for an Emotive 14-channel wireless EEG
+## headset. The manager contains methods for polling and reading
+## data in real time
+## ---------------------------------------------------------------- ##
 
 from threading import Thread
 import ctypes
@@ -45,10 +48,10 @@ class Sensor(object):
     def __init__(self, name="", id=0, position=(0,0,0),
                  connected=False, included=False):
         self.name = name
-        self.id = id
-        self.position = position
-        self.connected = connected
-        self.included = included
+        self.id = id                 # Numerical ID (see variables.py)
+        self.position = position     # 2D Position
+        self.connected = connected   # Whether the sensor is connected
+        self.included = included     # Whether the sensor is included among the monitored ones.
 
 class Headset():
     """An abstraction of an headset"""
@@ -56,13 +59,13 @@ class Headset():
         pass   # Still unimplemented
 
 class EmotivManager(object):
-    #code
+    """A generic manager for an Emotiv 14-ch headset"""
     def __init__(self ):
         self.edk = None
         self.edk_loaded = False
         self.load_edk()
         self._connected = False # Whether connected or not
-        self._has_user = False # Whether there is a user or not
+        self._has_user = False  # Whether there is a user or not
         self._sampling = False  # Whether sampling or not
         self._sampling_interval = 1      # Sampling interval in secs
         self._monitoring = False
@@ -224,6 +227,10 @@ class EmotivManager(object):
         if self.has_user and self.sampling:
             
             # Acquires data here
+            # ...
+            # In the new implementation, the data will be read from a
+            # an array. The array will be cleaned afterwards. The array
+            # is augmented with new data by the monitoring thread.
             # ...
             # And then notifies some other object (GUI) that
             # will analyze the data properly.
@@ -391,8 +398,8 @@ class EmotivManager(object):
     def execute_event_functions(self, event_id):
         """Executes all the listener functions associated with a given
         event ID"""
-        print self._listeners
-        print len(self._listeners[event_id])
+        #print self._listeners
+        #print len(self._listeners[event_id])
         if event_id in ccdl.EVENTS:
             for func in self._listeners[event_id]:
                 func()

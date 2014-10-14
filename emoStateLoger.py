@@ -193,7 +193,16 @@ while (1):
             libEDK.EE_EmoEngineEventGetEmoState(eEvent,eState)
             timestamp = ES_GetTimeFromStart(eState)
             print "%10.3f New EmoState from user %d ...\r" %(timestamp,userID.value)
-            logEmoState(userID,eState)   
+            logEmoState(userID,eState)
+            
+        # Andy's code
+        elif eventType == 16: # User added
+            print "User added"
+        elif eventType == 32: # User removed
+            print "User removed"
+        else:
+            print "Other code: %d" % eventType
+        # End of Andy's code
     elif state != 0x0600:
         print "Internal error in Emotiv Engine ! "
     time.sleep(0.1)
