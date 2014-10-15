@@ -376,7 +376,7 @@ class HeadsetPanel(ManagerPanel):
         ManagerPanel.__init__(self, parent, manager,
                               manager_state=True,
                               monitored_events=(ccdl.USER_EVENT,
-                                                ccdl.MONITORING_EVENT))
+                                                ccdl.CONNECTION_EVENT))
         
     def create_objects(self):
         self._battery_lbl = wx.StaticText(self, -1, "Battery Level:")
@@ -387,7 +387,7 @@ class HeadsetPanel(ManagerPanel):
         
         # Gauges
         self._battery_gge = wx.Gauge(self, -1, 5, size=(100, 20))
-        self._wireless_gge= wx.Gauge(self, -1, 4, size=(100, 20))
+        self._wireless_gge= wx.Gauge(self, -1, 2, size=(100, 20))
         
         self.all_components = (self._battery_lbl, self._wireless_lbl,
                                self._sampling_rate_lbl, self._time_lbl,
@@ -407,18 +407,15 @@ class HeadsetPanel(ManagerPanel):
     def update_gauges(self):
         mgr = self.manager
         e_state = mgr.eState
-        num = mgr.edk.ES_GetNumContactQualityChannels(e_state)
-        t = mgr.edk.ES_GetTimeFromStart(e_state)
+        #num = mgr.edk.ES_GetNumContactQualityChannels(e_state)
+        #t = mgr.edk.ES_GetTimeFromStart(e_state)
         level = c_int(0)
         max_level = c_int(10)
-        plevel = pointer(level)
-        pmax_level = pointer(max_level)
-        battery = mgr.edk.ES_GetBatteryChargeLevel(e_state, plevel, pmax_level)
-        self._battery_gge.SetValue(level.value)
-        self._battery_gge.SetRange(max_level.value)
+        self._battery_gge.SetValue(mgr.battery_level)
+        #self._battery_gge.SetRange(max_level.value)
         
-        signal = mgr.edk.ES_GetWirelessSignalStatus(e_state)
-        self._wireless_gge.SetValue(level.value)
+        #signal = mgr.edk.ES_GetWirelessSignalStatus(e_state)
+        self._wireless_gge.SetValue(mgr.wireless_signal)
         #self._battery_gge.SetRange(max_level.value)
 
     def refresh(self):

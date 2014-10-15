@@ -33,6 +33,13 @@ ED_SYNC_SIGNAL = 24
 SENSORS = (ED_AF3, ED_F7, ED_F3, ED_FC5, ED_T7, ED_P7, ED_O1, ED_O2,
            ED_P8, ED_T8, ED_FC6, ED_F4, ED_F8, ED_AF4)
 
+
+## Wireless signal
+
+EDK_NO_SIGNAL = 0
+EDK_BAD_SIGNAL = 1
+EDK_GOOD_SIGNAL = 2
+
 ## Hardware events
 
 EE_User_Added = 0x0010 

@@ -72,6 +72,9 @@ class EmotivManager(object):
         self._monitor_interval = 0.2
         self._listeners = dict(zip(ccdl.EVENTS, [[] for i in ccdl.EVENTS]))
         
+        self._battery_level = 0
+        self._wireless_signal = variables.EDK_NO_SIGNAL
+        
         ## Emotive C structures
         ##
         ## *** NOTE!!! ***
@@ -271,8 +274,13 @@ class EmotivManager(object):
         else:
             if bool:
                 self._monitoring = True
+                
+                # Sets the buffer to collect data
+                self.hData = self.edk.EE_DataCreate()
+                self.edk.EE_DataSetBufferSizeInSec(self.secs)
+                
+                # Creates and starts the monitor
                 self._monitor = Thread(target=self.monitor)
-                # Here we start the thread
                 self._monitor.start()
     
     
@@ -321,23 +329,27 @@ class EmotivManager(object):
                     self.edk.EE_EmoEngineEventGetUserId(self.eEvent, self.user)
                     print "\tFor user: %s" %self.userID
                     code = self.edk.EE_EmoEngineEventGetEmoState(self.eEvent, self.eState)
-                    head = self.edk.ES_GetHeadsetOn(self.eState)
+                    #head = self.edk.ES_GetHeadsetOn(self.eState)
                     num = self.edk.ES_GetNumContactQualityChannels(self.eState)
                     t = self.edk.ES_GetTimeFromStart(self.eState)
                     level = c_int(0)
                     max_level = c_int(10)
-                    plevel = pointer(level)
-                    pmax_level = pointer(max_level)
-                    k = self.edk.ES_GetBatteryChargeLevel(self.eState, plevel, pmax_level)
+                    self.edk.ES_GetBatteryChargeLevel(self.eState, pointer(level), pointer(max_level))
                     sr = c_uint(0)
+                    
+                    self.wireless_signal = self.edk.ES_GetWirelessSignalStatus(self.eState)
                         
                     self.edk.EE_DataGetSamplingRate(self.userID, pointer(sr))
                     print("\tSamping rate: %s" % sr)
-                    print "\tCode: %d, %s" % (code, code is variables.EDK_OK)
+                    #print "\tCode: %d, %s" % (code, code is variables.EDK_OK)
                     print "\tHeadset on: %d" % head
                     print "\tNum of channels: %d" % num
                     print "\tTime from start: %10.3f/%s" % (t, t)
                     print "\tBattery: %s/%s" % (level.value, max_level.value)
+                    print "\tSignal: %s" % (self.wireless_signal)
+                
+                    # Uncomment when ready to collect data.
+                    #self.store_data()
                 
                 else:
                     # Just for debug here.
@@ -346,6 +358,7 @@ class EmotivManager(object):
             elif state == variables.EDK_NO_EVENT:
                 # If the state is NO-EVENT, then it likely means that
                 # there is no headset connected, and no data can be acquired.
+                # *** THAT IS ACTUALLY NOT TRUE!! ***
                 self.has_user = False
 
             else:
@@ -355,6 +368,28 @@ class EmotivManager(object):
             # After all of this, just sleeps for the amount necessary
             time.sleep(self.monitor_interval)
             counter += 1
+
+    ## NEW FUNCTION
+    def store_data(self):
+        """Collects the new data at every monitor interval"""
+        self.edk.EE_DataUpdateHandle(0, self.hData)
+        self.edk.EE_DataGetNumberOfSample(self.hData, self.nSamplesTaken)
+        #print "Updated :",nSamplesTaken[0]
+        if self.nSamplesTaken[0] != 0:
+            self.nSam = self.nSamplesTaken[0]
+            arr = (ctypes.c_double * nSamplesTaken[0])()
+            ctypes.cast(arr, ctypes.POINTER(ctypes.c_double))
+            #libEDK.EE_DataGet(hData, 3,byref(arr), nSam)             
+            data = array('d')  #zeros(nSamplesTaken[0],double)
+            for sampleIdx in range(nSamplesTaken[0]):
+                for i in range(22): 
+                    self.edk.EE_DataGet(self.hData, targetChannelList[i], byref(arr), self.nSam)
+            
+            # Save data into internal growing array
+            self.data_buffer = vstack( (self.data_buffer, self.hData) )
+            
+        # Free the buffer
+        libEDK.EE_DataFree(self.hData)
 
     @property
     def has_user(self):
@@ -374,6 +409,30 @@ class EmotivManager(object):
             # here should raise some exceptions --- cannot
             # change the user if we are not event connected!
             pass
+    
+    @property    
+    def battery_level(self):
+        """The current battery level of a headset"""
+        return self._battery_level
+    
+    @battery_level.setter
+    def battery_level(self, val):
+        if val != self.battery_level:
+            self._battery_level = val
+            self.execute_event_functions(ccdl.CONNECTION_EVENT)
+    
+    @property
+    def wireless_signal(self):
+        """The current strength of the wireless signal"""
+        return self._wireless_signal
+    
+    @wireless_signal.setter
+    def wireless_signal(self, val):
+        """Sets the current strength of the wireless signal to VAL"""
+        if val != self._wireless_signal:
+            self._wireless_signal = val
+            self.execute_event_functions(ccdl.CONNECTION_EVENT)
+    
     
     # ------------------------------------------------------------- #
     # EVENTS MODEL
