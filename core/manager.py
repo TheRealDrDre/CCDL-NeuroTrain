@@ -10,7 +10,7 @@ import sys
 import os
 import ccdl
 from ctypes import *
-from numpy import *
+import numpy as np
 import variables
 import time
 import types
@@ -75,6 +75,8 @@ class EmotivManager(object):
         self._battery_level = 0
         self._wireless_signal = variables.EDK_NO_SIGNAL
         
+        self.data_buffer = np.zeros((0, len(variables.CHANNELS)), order="C", dtype=np.double)
+        
         ## Emotive C structures
         ##
         ## *** NOTE!!! ***
@@ -94,7 +96,7 @@ class EmotivManager(object):
         self.nSamples   = c_uint(0)
         self.nSam       = c_uint(0)
         self.nSamplesTaken  = pointer(self.nSamples)
-        self.da = zeros(128,double)
+        self.da = np.zeros(128,np.double)
         self.data     = pointer(c_double(0))
         self.user                    = pointer(self.userID)
         self.composerPort          = c_uint(1726)
@@ -310,11 +312,12 @@ class EmotivManager(object):
                 
                 if eventType == variables.EE_User_Added:   # Code 16, 0x0010
                     print "[%d] User added" % counter
-                    if not self.has_user:
-                        self.has_user = True
+                    #if not self.has_user:
+                    #    self.has_user = True
                     
                     # Sets the user ID
-                    self.edk.EE_EmoEngineEventGetUserId(self.eEvent, self.user)                    
+                    self.edk.EE_EmoEngineEventGetUserId(self.eEvent, self.user)
+                    self.edk.EE_DataAcquisitionEnable(self.userID,True)
                     
                 elif eventType == variables.EE_User_Removed:
                     print "[%d] User removed" % counter
@@ -342,14 +345,14 @@ class EmotivManager(object):
                     self.edk.EE_DataGetSamplingRate(self.userID, pointer(sr))
                     print("\tSamping rate: %s" % sr)
                     #print "\tCode: %d, %s" % (code, code is variables.EDK_OK)
-                    print "\tHeadset on: %d" % head
+                    #print "\tHeadset on: %d" % head
                     print "\tNum of channels: %d" % num
-                    print "\tTime from start: %10.3f/%s" % (t, t)
+                    print "\tTime from start: %10.3f" % (t)
                     print "\tBattery: %s/%s" % (level.value, max_level.value)
                     print "\tSignal: %s" % (self.wireless_signal)
                 
-                    # Uncomment when ready to collect data.
-                    #self.store_data()
+                    # Stores a partial sample of data waiting to be processed.
+                    self.store_data()
                 
                 else:
                     # Just for debug here.
@@ -358,8 +361,10 @@ class EmotivManager(object):
             elif state == variables.EDK_NO_EVENT:
                 # If the state is NO-EVENT, then it likely means that
                 # there is no headset connected, and no data can be acquired.
+                
                 # *** THAT IS ACTUALLY NOT TRUE!! ***
-                self.has_user = False
+                #self.has_user = False
+                pass
 
             else:
                 # Here should raise an exception (probably).
@@ -370,26 +375,31 @@ class EmotivManager(object):
             counter += 1
 
     ## NEW FUNCTION
-    def store_data(self):
+    def store_data(self, C=len(variables.CHANNELS)):
         """Collects the new data at every monitor interval"""
         self.edk.EE_DataUpdateHandle(0, self.hData)
         self.edk.EE_DataGetNumberOfSample(self.hData, self.nSamplesTaken)
-        #print "Updated :",nSamplesTaken[0]
-        if self.nSamplesTaken[0] != 0:
-            self.nSam = self.nSamplesTaken[0]
-            arr = (ctypes.c_double * nSamplesTaken[0])()
+        N = self.nSamplesTaken[0]
+        
+        if N != 0:
+            # Create the C-style array for storing the data
+            arr = (ctypes.c_double * N)()
             ctypes.cast(arr, ctypes.POINTER(ctypes.c_double))
-            #libEDK.EE_DataGet(hData, 3,byref(arr), nSam)             
-            data = array('d')  #zeros(nSamplesTaken[0],double)
-            for sampleIdx in range(nSamplesTaken[0]):
-                for i in range(22): 
-                    self.edk.EE_DataGet(self.hData, targetChannelList[i], byref(arr), self.nSam)
             
-            # Save data into internal growing array
-            self.data_buffer = vstack( (self.data_buffer, self.hData) )
+            # Create a numpy array to copy the data.
+            data = np.zeros((N, C))
+            for sample in range(N):
+                for channel in range(C):
+                    self.edk.EE_DataGet(self.hData,
+                                        variables.CHANNELS[channel],
+                                        byref(arr), N)
+                    data[sample, channel] = arr[sample]
             
-        # Free the buffer
-        libEDK.EE_DataFree(self.hData)
+            # Save data into an internal growing array
+            self.data_buffer = np.vstack( (self.data_buffer, data) )
+        
+        # *** THIS NEEDS TO BE DONE WHEN CONNECTION IS LOST ***
+        #
 
     @property
     def has_user(self):
@@ -430,7 +440,13 @@ class EmotivManager(object):
     def wireless_signal(self, val):
         """Sets the current strength of the wireless signal to VAL"""
         if val != self._wireless_signal:
+            if self._wireless_signal == variables.EDK_NO_SIGNAL:
+                self.has_user = True
             self._wireless_signal = val
+            
+            if val == variables.EDK_NO_SIGNAL:
+                self.has_user = False
+            
             self.execute_event_functions(ccdl.CONNECTION_EVENT)
     
     
@@ -457,7 +473,8 @@ class EmotivManager(object):
     def execute_event_functions(self, event_id):
         """Executes all the listener functions associated with a given
         event ID"""
-        #print self._listeners
+        for i in self._listeners[event_id]:
+            print event_id, i
         #print len(self._listeners[event_id])
         if event_id in ccdl.EVENTS:
             for func in self._listeners[event_id]:
@@ -474,6 +491,7 @@ class EmotivManager(object):
         """Cleanly removes C++ allocated objects"""
         self.edk.EE_EmoStateFree(self.eState)
         self.edk.EE_EmoEngineEventFree(self.eEvent)
+        self.edk.EE_DataFree(self.hData)
         
     def __del__(self):
         """Disconnects and frees memory before destroying the object"""

@@ -422,7 +422,7 @@ class HeadsetPanel(ManagerPanel):
         t = self.manager.edk.ES_GetTimeFromStart(self.manager.eState)
         
         has_user = self.manager.has_user
-        if has_user is not self.manager_state:
+        if has_user is not self.manager_state:   ## ??? 
             if has_user:
                 print("\tTIME: %10.3f" % t)
                 self.update_gauges()
@@ -439,7 +439,6 @@ class NeuroTrainFrame(wx.Frame):
     def __init__(self, parent, title):
         """Inits the frame"""
         wx.Frame.__init__(self, parent, title=title, size=(250, 200))
-        #ManagerWrapper.__init__()
         self.create_objects()
         self.do_layout()
         self.Fit()

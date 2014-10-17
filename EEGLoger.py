@@ -114,12 +114,13 @@ while (1):
             ctypes.cast(arr, ctypes.POINTER(ctypes.c_double))
             #libEDK.EE_DataGet(hData, 3,byref(arr), nSam)                         
             data = array('d')#zeros(nSamplesTaken[0],double)
+            
             for sampleIdx in range(nSamplesTaken[0]): 
                 for i in range(22): 
                     libEDK.EE_DataGet(hData,targetChannelList[i],byref(arr), nSam)
                     print >>f,arr[sampleIdx],",",
                 print >>f,'\n'
-    time.sleep(0.2)
+    time.sleep(0.0625)
 libEDK.EE_DataFree(hData)
 
 #---------------------------------------------------------------------------------------------------------------------------------------------------------------
