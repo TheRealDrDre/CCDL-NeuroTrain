@@ -335,14 +335,21 @@ class EmotivManager(object):
                     #head = self.edk.ES_GetHeadsetOn(self.eState)
                     num = self.edk.ES_GetNumContactQualityChannels(self.eState)
                     t = self.edk.ES_GetTimeFromStart(self.eState)
+                    
+                    # Monitor Battery Level
                     level = c_int(0)
                     max_level = c_int(10)
                     self.edk.ES_GetBatteryChargeLevel(self.eState, pointer(level), pointer(max_level))
-                    sr = c_uint(0)
+                    self.battery_level = level.value
                     
+                    # Monitor Wireless Signal
                     self.wireless_signal = self.edk.ES_GetWirelessSignalStatus(self.eState)
-                        
+                    
+                    # Monitor Sampling Rate
+                    sr = c_uint(0)
                     self.edk.EE_DataGetSamplingRate(self.userID, pointer(sr))
+                    
+                    # A simple print report for debug
                     print("\tSamping rate: %s" % sr)
                     #print "\tCode: %d, %s" % (code, code is variables.EDK_OK)
                     #print "\tHeadset on: %d" % head
@@ -351,7 +358,7 @@ class EmotivManager(object):
                     print "\tBattery: %s/%s" % (level.value, max_level.value)
                     print "\tSignal: %s" % (self.wireless_signal)
                 
-                    # Stores a partial sample of data waiting to be processed.
+                    # Stores the partial sample of data waiting to be processed.
                     self.store_data()
                 
                 else:
@@ -377,16 +384,19 @@ class EmotivManager(object):
     ## NEW FUNCTION
     def store_data(self, C=len(variables.CHANNELS)):
         """Collects the new data at every monitor interval"""
+        
+        # Updates the data array
         self.edk.EE_DataUpdateHandle(0, self.hData)
         self.edk.EE_DataGetNumberOfSample(self.hData, self.nSamplesTaken)
         N = self.nSamplesTaken[0]
         
-        if N != 0:
+        if N != 0:   # Only if we have collected > 0 samples
             # Create the C-style array for storing the data
             arr = (ctypes.c_double * N)()
             ctypes.cast(arr, ctypes.POINTER(ctypes.c_double))
             
-            # Create a numpy array to copy the data.
+            # Create a numpy array and copy the C-style array
+            # data into it.
             data = np.zeros((N, C))
             for sample in range(N):
                 for channel in range(C):
@@ -398,8 +408,6 @@ class EmotivManager(object):
             # Save data into an internal growing array
             self.data_buffer = np.vstack( (self.data_buffer, data) )
         
-        # *** THIS NEEDS TO BE DONE WHEN CONNECTION IS LOST ***
-        #
 
     @property
     def has_user(self):

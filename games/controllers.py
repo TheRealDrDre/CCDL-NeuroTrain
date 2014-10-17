@@ -54,6 +54,7 @@ class SpectrumAnalyzer(object):
     
     def analyze(data):
         """Returns the frequency for the given channels"""
+        ## Do welch periodogram here
         pass
             
 
@@ -72,4 +73,4 @@ class GameController(object):
 
 def class AlphaTheta(object):
     """A Simple Alpha Theta Controller"""
-
+    pass

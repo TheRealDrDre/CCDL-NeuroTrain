@@ -375,8 +375,7 @@ class HeadsetPanel(ManagerPanel):
     def __init__(self, parent, manager):
         ManagerPanel.__init__(self, parent, manager,
                               manager_state=True,
-                              monitored_events=(ccdl.USER_EVENT,
-                                                ccdl.CONNECTION_EVENT))
+                              monitored_events=(ccdl.CONNECTION_EVENT,))
         
     def create_objects(self):
         self._battery_lbl = wx.StaticText(self, -1, "Battery Level:")
@@ -389,49 +388,71 @@ class HeadsetPanel(ManagerPanel):
         self._battery_gge = wx.Gauge(self, -1, 5, size=(100, 20))
         self._wireless_gge= wx.Gauge(self, -1, 2, size=(100, 20))
         
+        # Text infor:
+        self._sampling_rate_txt = wx.StaticText(self, -1, "128")
+        self._num_channels_txt = wx.StaticText(self, -1, "18")
+        self._time_txt = wx.StaticText(self, -1, "0:00")
+        
         self.all_components = (self._battery_lbl, self._wireless_lbl,
                                self._sampling_rate_lbl, self._time_lbl,
                                self._num_channels_lbl,
+                               
                                # Gauges
                                self._battery_gge, self._wireless_gge,
-                               )
+                               
+                               # Infotexts
+                               self._sampling_rate_txt, self._num_channels_txt,
+                               self._time_txt)
 
     def do_layout(self):
-        sizer = wx.BoxSizer(wx.VERTICAL)
-        for c in self.all_components:
-            sizer.Add(c)
-        self.SetSizerAndFit(sizer)
+        """Lays out the components. The components are lined up as
+        two columns of five rows each; labels on the left, values
+        and gauges on the right
+        """
+        sizer1 = wx.BoxSizer(wx.VERTICAL)
+        sizer2 = wx.BoxSizer(wx.VERTICAL)
+        for label in [self._battery_lbl, self._wireless_lbl,
+                      self._sampling_rate_lbl, self._time_lbl,
+                      self._num_channels_lbl]:
+            sizer1.Add(label)
+            
+        for cntrl in [self._battery_gge, self._wireless_gge,
+                      self._sampling_rate_txt, self._time_txt,
+                      self._num_channels_txt]:
+            sizer2.Add(cntrl)
+            
+        sizer3 = wx.BoxSizer(wx.HORIZONTAL)
+        sizer3.Add(sizer1)
+        sizer3.Add(sizer2)
+        self.SetSizerAndFit(sizer3)
         self.refresh()
         
 
     def update_gauges(self):
+        """Updates the values of gauges and labels"""
         mgr = self.manager
-        e_state = mgr.eState
-        #num = mgr.edk.ES_GetNumContactQualityChannels(e_state)
-        #t = mgr.edk.ES_GetTimeFromStart(e_state)
-        level = c_int(0)
-        max_level = c_int(10)
         self._battery_gge.SetValue(mgr.battery_level)
-        #self._battery_gge.SetRange(max_level.value)
-        
-        #signal = mgr.edk.ES_GetWirelessSignalStatus(e_state)
         self._wireless_gge.SetValue(mgr.wireless_signal)
-        #self._battery_gge.SetRange(max_level.value)
-
+        self._sampling_rate_txt.SetLabel("128")
+        self._num_channels_txt.SetLabel("18")   
+        
     def refresh(self):
+        """Refreshes the component in case of events"""
         t = self.manager.edk.ES_GetTimeFromStart(self.manager.eState)
         
         has_user = self.manager.has_user
-        if has_user is not self.manager_state:   ## ??? 
-            if has_user:
-                print("\tTIME: %10.3f" % t)
-                self.update_gauges()
-                for c in self.all_components:
-                    c.Enable()
-            else:
-                for c in self.all_components:
-                    c.Disable()
-            
+        if has_user:
+            self.update_gauges()
+            for c in self.all_components:
+                c.Enable()
+        else:
+            for c in self.all_components:
+                c.Disable()
+            # A few fix-ups:
+            self._sampling_rate_txt.SetLabel("--")
+            self._num_channels_txt.SetLabel("--")
+            self._battery_gge.SetValue(0)
+            self._wireless_gge.SetValue(0)
 
 class NeuroTrainFrame(wx.Frame):
     """The main frame"""
