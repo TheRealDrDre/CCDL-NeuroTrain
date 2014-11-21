@@ -9,13 +9,8 @@ from ctypes import *
 from core.variables import *
 from core.manager import EmotivManager, ManagerWrapper
 
-__dir__ = ["SENSOR_NAMES", "ManagerPanel", "ConnectPanel", "UserPanel",
+__dir__ = ["ManagerPanel", "ConnectPanel", "UserPanel",
            "HeadsetPanel"]
-
-SENSOR_NAMES = {ED_AF3 : "AF3", ED_F7 : "F7", ED_F3 : "F3", ED_FC5 : "FC5",
-                ED_T7 : "T7", ED_P7 : "P7", ED_O1 : "O1", ED_O2 : "O2",
-                ED_P8 : "P8", ED_T8 : "T8", ED_FC6 : "FC6", ED_F4 : "F4",
-                ED_F8 : "F8", ED_AF4 : "AF4"}
 
 
 SENSOR_POSITIONS = {ED_AF3 : (85, 62), ED_F7 : (37, 113), ED_F3 : (118, 109),
@@ -222,6 +217,11 @@ class ConnectPanel(ManagerPanel):
 
 class SensorPanel(wx.Panel):
     """A small widget that displays the state of a sensor"""
+    COLOR_MAP = {0 : wx.Colour(0,0,0),
+                 1 : wx.Colour(255,0,0),
+                 2 : wx.Colour(255, 255, 0),
+                 3 : wx.Colour(0,255,0)}
+    
     def __init__(self, parent, sensor_id=0, size=(50, 25)):
         wx.Panel.__init__(self, parent, -1,
                           style=wx.NO_FULL_REPAINT_ON_RESIZE,
@@ -236,6 +236,7 @@ class SensorPanel(wx.Panel):
         self._checkbox = wx.CheckBox(self, -1, self._sensor_name)
         self._sensor_enabled = False
         self._sensor_recording = False  ## Currently unused
+        self._quality = 0 ## Recordin quality
         #self.do_layout()
         
     @property
@@ -273,6 +274,20 @@ class SensorPanel(wx.Panel):
             self._checkbox.Disable()
         self._sensor_enabled = bool     
     
+    
+    @property
+    def quality(self):
+        return self_quality
+    
+    @quality.setter
+    def quality(self, val):
+        if (self._quality != val):
+            self._quality = val
+            if val in SensorPanel.COLOR_MAP.keys():
+                col = SensorPanel.COLOR_MAP[val]
+                self._checkbox.SetForegroundColour(val)
+            else:
+                self._checkbox.SetForegroundColour(wxColour(0,0,255))
 
 class UserPanel(ManagerPanel):
     """A Class that visualizes the user and its sensors"""
@@ -280,7 +295,8 @@ class UserPanel(ManagerPanel):
     def __init__(self, parent, manager):
         ManagerPanel.__init__(self, parent, manager,
                               manager_state=True,
-                              monitored_events=(ccdl.USER_EVENT, ccdl.MONITORING_EVENT))
+                              monitored_events=(ccdl.USER_EVENT, ccdl.MONITORING_EVENT,
+                                                ccdl.SENSOR_EVENT))
         #self.Bind(wx.EVT_ERASE_BACKGROUND, self.on_erase_background)
         
     def create_objects(self):
@@ -355,6 +371,11 @@ class UserPanel(ManagerPanel):
                 i.Disable()
             
     
+    def update_quality(self):
+        Q = copy.copy(self.manager.sensor_quality)
+        for sensor in self.sensors:
+            sensor.quality = Q[sensor[sensor.sensor_id]]
+    
     def refresh(self):
         """Updates the components based on the manager's state"""
         has_user = self.manager.has_user
@@ -370,14 +391,16 @@ class UserPanel(ManagerPanel):
                 self.background_bitmap = self.disabled_img
             self.Update()
 
+
 class HeadsetPanel(ManagerPanel):
     """A class that visualizes information about a headset"""
     def __init__(self, parent, manager):
         ManagerPanel.__init__(self, parent, manager,
                               manager_state=True,
-                              monitored_events=(ccdl.CONNECTION_EVENT,))
+                              monitored_events=(ccdl.CONNECTION_EVENT, ))
         
     def create_objects(self):
+        """Instantiates all the objects in a headset panel"""
         self._battery_lbl = wx.StaticText(self, -1, "Battery Level:")
         self._wireless_lbl = wx.StaticText(self, -1, "Wireless Signal Strength:")
         self._sampling_rate_lbl = wx.StaticText(self, -1, "Sampling Rate:")

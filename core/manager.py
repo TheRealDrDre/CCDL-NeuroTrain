@@ -52,6 +52,8 @@ class Sensor(object):
         self.position = position     # 2D Position
         self.connected = connected   # Whether the sensor is connected
         self.included = included     # Whether the sensor is included among the monitored ones.
+        self.quality = 0             # Signal (impedence?) quality
+
 
 class Headset():
     """An abstraction of an headset"""
@@ -71,6 +73,9 @@ class EmotivManager(object):
         self._monitoring = False
         self._monitor_interval = 0.2
         self._listeners = dict(zip(ccdl.EVENTS, [[] for i in ccdl.EVENTS]))
+        
+        self._sensor_quality = dict(zip(variables.SENSORS,
+                                    [0] * len(variables.SENSORS)))
         
         self._battery_level = 0
         self._wireless_signal = variables.EDK_NO_SIGNAL
@@ -360,6 +365,7 @@ class EmotivManager(object):
                 
                     # Stores the partial sample of data waiting to be processed.
                     self.store_data()
+                    self.store_sensor_quality()
                 
                 else:
                     # Just for debug here.
@@ -381,7 +387,9 @@ class EmotivManager(object):
             time.sleep(self.monitor_interval)
             counter += 1
 
-    ## NEW FUNCTION
+    ## In the newest model, the monitor contiuously acquires data and stores
+    ## it in an increasingly large table.
+    ##
     def store_data(self, C=len(variables.CHANNELS)):
         """Collects the new data at every monitor interval"""
         
@@ -408,6 +416,15 @@ class EmotivManager(object):
             # Save data into an internal growing array
             self.data_buffer = np.vstack( (self.data_buffer, data) )
         
+    def store_sensor_quality(self):
+        """Reads the sensor quality"""
+        Q = {}
+        for sensor in variables.SENSORS:
+            
+            Q[sensor] = self.edk.ES_GetContactQuality(self.eState, sensor);
+            name = variables.SENSOR_NAMES[sensor]
+            print "   %s : %d" % (name, Q[sensor])
+        self.sensor_quality = Q
 
     @property
     def has_user(self):
@@ -457,6 +474,17 @@ class EmotivManager(object):
             
             self.execute_event_functions(ccdl.CONNECTION_EVENT)
     
+    @property
+    def sensor_quality(self):
+        """An array containing the recording quality of each sensor"""
+        return self._sensor_quality
+    
+    @sensor_quality.setter
+    def sensor_quality(self, sq):
+        """Changes the sensor quality values"""
+        if (self._sensor_quality != sq):
+            self._sensor_quality = sq
+            self.execute_event_functions( ccdl.SENSOR_EVENT )
     
     # ------------------------------------------------------------- #
     # EVENTS MODEL
