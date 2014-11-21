@@ -30,7 +30,7 @@ class ManagerPanel(wx.Panel, ManagerWrapper):
         self._manager_state = manager_state # A variable to store the previous state
         self.create_objects()
         self.do_layout()
-        self.refresh()    
+        self.refresh(None)    
     
     @property
     def manager_state(self):
@@ -111,15 +111,14 @@ class ConnectPanel(ManagerPanel):
         box4 = wx.StaticBox(self, -1, "Connection Parameters")
         bsizer4 = wx.StaticBoxSizer(box4, wx.VERTICAL)
         bsizer4.Add(box1, 0, wx.TOP|wx.LEFT, 10)
-        bsizer4.Add(box2, 0, wx.TOP|wx.LEFT, 10)
-
+        
         box = wx.BoxSizer(wx.HORIZONTAL)
         box.Add(bsizer3, 1, wx.EXPAND|wx.ALL, 25)
         box.Add(bsizer4, 1, wx.EXPAND|wx.ALL, 25)        
         
         self.SetSizer(box)
 
-    def refresh(self):
+    def refresh(self, arg=None):   # ARG is unused
         """Refreshes the buttons based on the state of the connection"""
         if self.manager is None:
             # If no manager is found, then no button should be pressed.
@@ -189,7 +188,7 @@ class ConnectPanel(ManagerPanel):
                 dlg.ShowModal()
                 dlg.Destroy()
                 
-        self.refresh()
+        self.refresh(None)
             
 
 class SensorPanel(wx.Panel):
@@ -353,7 +352,7 @@ class UserPanel(ManagerPanel):
         for sensor in self.sensors:
             sensor.quality = Q[sensor[sensor.sensor_id]]
     
-    def refresh(self):
+    def refresh(self, arg=None):  # ARG argument is unused
         """Updates the components based on the manager's state"""
         has_user = self.manager.has_user
         if has_user is not self.manager_state:
@@ -425,7 +424,7 @@ class HeadsetPanel(ManagerPanel):
         sizer3.Add(sizer1)
         sizer3.Add(sizer2)
         self.SetSizerAndFit(sizer3)
-        self.refresh()
+        self.refresh(None)
         
 
     def update_gauges(self):
@@ -436,7 +435,7 @@ class HeadsetPanel(ManagerPanel):
         self._sampling_rate_txt.SetLabel("128")
         self._num_channels_txt.SetLabel("18")   
         
-    def refresh(self):
+    def refresh(self, arg=None):  # Argument is unused
         """Refreshes the component in case of events"""
         t = self.manager.edk.ES_GetTimeFromStart(self.manager.eState)
         

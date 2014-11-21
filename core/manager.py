@@ -276,7 +276,7 @@ class EmotivManager(object):
                 elif eventType == variables.EE_EmoState_Updated:
                     print "[%d] EmoState updated: (%d)"  % (counter, eventType)
                     
-                    self.execute_event_functions(ccdl.MONITORING_EVENT)
+                    self.execute_event_functions(ccdl.MONITORING_EVENT, None)
                     
                     # This is a bunch of quick debug code.
                     self.edk.EE_EmoEngineEventGetUserId(self.eEvent, self.user)
@@ -502,7 +502,7 @@ class ManagerWrapper(object):
         self._manager = manager
         self.monitored_events = monitored_events
     
-    def refresh(self):
+    def refresh(self, arg):
         """A method that should be called by the manager whenever
         some of its properties change """
         pass
