@@ -55,11 +55,6 @@ class Sensor(object):
         self.quality = 0             # Signal (impedence?) quality
 
 
-class Headset():
-    """An abstraction of an headset"""
-    def __init__(self):
-        pass   # Still unimplemented
-
 class EmotivManager(object):
     """A generic manager for an Emotiv 14-ch headset"""
     def __init__(self ):
@@ -68,10 +63,10 @@ class EmotivManager(object):
         self.load_edk()
         self._connected = False # Whether connected or not
         self._has_user = False  # Whether there is a user or not
-        self._sampling = False  # Whether sampling or not
-        self._sampling_interval = 1      # Sampling interval in secs
+        #self._sampling = False  # Whether sampling or not
+        #self._sampling_interval = 1      # Sampling interval in secs
         self._monitoring = False
-        self._monitor_interval = 0.2
+        self._monitor_interval = 0.1
         self._listeners = dict(zip(ccdl.EVENTS, [[] for i in ccdl.EVENTS]))
         
         self._sensor_quality = dict(zip(variables.SENSORS,
@@ -80,7 +75,10 @@ class EmotivManager(object):
         self._battery_level = 0
         self._wireless_signal = variables.EDK_NO_SIGNAL
         
-        self.data_buffer = np.zeros((0, len(variables.CHANNELS)), order="C", dtype=np.double)
+        self._sensor_data = np.zeros((0, len(variables.CHANNELS)),
+                                      order="C", dtype=np.double)
+        #self._sensor_quality_data = np.zeros((0, len(variables.CHANNELS)),
+        #                                      order="C", dtype=np.int)
         
         ## Emotive C structures
         ##
@@ -194,61 +192,6 @@ class EmotivManager(object):
             # Either way, we should stop sampling
             self.monitoring = False
 
-
-    @property
-    def sampling_interval(self):
-        """Returns the sampling interval"""
-        return self._sampling_interval
-    
-    @sampling_interval.setter
-    def sampling_interval(self, val):
-        """Sets the sampling interval"""
-        self._sampling_interval = val
-
-    @property
-    def sampling(self):
-        """Returns whether the object is currently sampling or not"""
-        return self._sampling
-    
-    @sampling.setter
-    def sampling(self, bool):
-        """Sets the sampling state"""
-        if self.has_user:
-            if self.sampling:
-                if bool:
-                    # Should throw exception here---
-                    # Cannot start a second sampling thread!
-                    pass   
-                else:
-                    # This means we are stoppin data sampling
-                    self._sampling = bool
-            else:
-                if bool:
-                    # Prepares the data buffer
-                    self.hData = self.edk.EE_DataCreate()
-                    self.edk.EE_DataSetBufferSizeInSec(c_float(self.sampling_interval))  # This needs to change to sampling interval
-                    
-                    # Here we start the thread
-                    self._sampler = Thread(self.sample)
-                    self._sampler.start()
-        
-    def sample(self):
-        """Samples data from the headset every sampling interval"""
-        if self.has_user and self.sampling:
-            
-            # Acquires data here
-            # ...
-            # In the new implementation, the data will be read from a
-            # an array. The array will be cleaned afterwards. The array
-            # is augmented with new data by the monitoring thread.
-            # ...
-            # And then notifies some other object (GUI) that
-            # will analyze the data properly.
-            # ...
-            # 
-            # And then sleep!
-            time.sleep(self.sampling_interval)
-            
     
     @property
     def monitor_interval(self):
@@ -284,7 +227,7 @@ class EmotivManager(object):
                 
                 # Sets the buffer to collect data
                 self.hData = self.edk.EE_DataCreate()
-                self.edk.EE_DataSetBufferSizeInSec(self.secs)
+                self.edk.EE_DataSetBufferSizeInSec(self.monitor_interval)
                 
                 # Creates and starts the monitor
                 self._monitor = Thread(target=self.monitor)
@@ -293,7 +236,8 @@ class EmotivManager(object):
     
     def monitor(self):
         """The one function that continuously monitors the status of a
-        headset (and whether a user is connected or not)"""
+        headset (and whether a user is connected or not).
+        If sampling is enabled, data will be connected."""
 
         counter = 0
         
@@ -326,6 +270,7 @@ class EmotivManager(object):
                     
                 elif eventType == variables.EE_User_Removed:
                     print "[%d] User removed" % counter
+                    # This never happens...
                     self.has_user = False
                     
                 elif eventType == variables.EE_EmoState_Updated:
@@ -359,13 +304,18 @@ class EmotivManager(object):
                     #print "\tCode: %d, %s" % (code, code is variables.EDK_OK)
                     #print "\tHeadset on: %d" % head
                     print "\tNum of channels: %d" % num
-                    print "\tTime from start: %10.3f" % (t)
-                    print "\tBattery: %s/%s" % (level.value, max_level.value)
-                    print "\tSignal: %s" % (self.wireless_signal)
+                    #print "\tTime from start: %10.3f" % (t)
+                    #print "\tBattery: %s/%s" % (level.value, max_level.value)
+                    #print "\tSignal: %s" % (self.wireless_signal)
                 
-                    # Stores the partial sample of data waiting to be processed.
-                    self.store_data()
-                    self.store_sensor_quality()
+                    # Calls all the functions responsible for collecting data.
+                    store_sensor_data()
+                    store_sensor_quality()
+                    #execute_event_functions(SENSOR_EVENT)
+                    #execute_event_functions(SENSORY_QUALITY_EVENT)
+                    
+                    #self.store_data()
+                    #self.store_sensor_quality()
                 
                 else:
                     # Just for debug here.
@@ -390,7 +340,7 @@ class EmotivManager(object):
     ## In the newest model, the monitor contiuously acquires data and stores
     ## it in an increasingly large table.
     ##
-    def store_data(self, C=len(variables.CHANNELS)):
+    def store_sensor_data(self, C=len(variables.CHANNELS)):
         """Collects the new data at every monitor interval"""
         
         # Updates the data array
@@ -413,14 +363,13 @@ class EmotivManager(object):
                                         byref(arr), N)
                     data[sample, channel] = arr[sample]
             
-            # Save data into an internal growing array
-            self.data_buffer = np.vstack( (self.data_buffer, data) )
+            # Save data into an internal array
+            self.sensor_data = data
         
     def store_sensor_quality(self):
         """Reads the sensor quality"""
         Q = {}
         for sensor in variables.SENSORS:
-            
             Q[sensor] = self.edk.ES_GetContactQuality(self.eState, sensor);
             name = variables.SENSOR_NAMES[sensor]
             print "   %s : %d" % (name, Q[sensor])
@@ -480,11 +429,20 @@ class EmotivManager(object):
         return self._sensor_quality
     
     @sensor_quality.setter
-    def sensor_quality(self, sq):
+    def sensor_quality(self, data):
         """Changes the sensor quality values"""
-        if (self._sensor_quality != sq):
-            self._sensor_quality = sq
-            self.execute_event_functions( ccdl.SENSOR_EVENT )
+        self._sensor_quality = data
+        self.execute_event_functions( ccdl.SENSOR_EVENT, data )
+    
+    @property
+    def sensor_data(self):
+        return self._sensor_data
+    
+    @sensor_data.setter
+    def sensor_data(self, data):
+        """Updates the sensor data"""
+        self._sensor_data = data
+        self.execute_event_functions( ccdl.SENSOR_QUALITY_EVENT, data)
     
     # ------------------------------------------------------------- #
     # EVENTS MODEL
@@ -506,7 +464,7 @@ class EmotivManager(object):
             raise ccdl.EventError(event_id)
 
 
-    def execute_event_functions(self, event_id):
+    def execute_event_functions(self, event_id, arg):
         """Executes all the listener functions associated with a given
         event ID"""
         for i in self._listeners[event_id]:
@@ -514,7 +472,7 @@ class EmotivManager(object):
         #print len(self._listeners[event_id])
         if event_id in ccdl.EVENTS:
             for func in self._listeners[event_id]:
-                func()
+                func(arg)
         else:
             raise ccdl.EventError(event_id)
             

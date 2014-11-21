@@ -64,16 +64,8 @@ class ConnectPanel(ManagerPanel):
         """Creates the internal objects"""
         self.connect_btn = wx.Button(self, 12, "Connect to the Headset", (20, 20))
         self.disconnect_btn = wx.Button(self, 11, "Disconnect from Headset", (20, 20))
-        
-        spin = wx.SpinCtrl(self, -1, min=1, max=10, size=(75, 25))
-
-        text = wx.StaticText(self, -1,
-                            "Sampling interval (in seconds)",
-                            (25, 15))
-        self.sampling_interval_spn = spin
-        self.sampling_interval_lbl = text
-        
-        spin = wx.SpinCtrlDouble(self, -1, min=0.1, max=0.5, inc=0.1,
+                
+        spin = wx.SpinCtrlDouble(self, -1, min=0.05, max=0.5, inc=0.025,
                                  size=(75, 25))
         
         
@@ -111,10 +103,6 @@ class ConnectPanel(ManagerPanel):
         box1.Add(self.monitor_interval_lbl)
         box1.Add(self.monitor_interval_spn)
 
-        box2 = wx.BoxSizer(wx.HORIZONTAL)
-        box2.Add(self.sampling_interval_lbl)
-        box2.Add(self.sampling_interval_spn)
-
         box3 = wx.StaticBox(self, -1, "EDK Connection")
         bsizer3 = wx.StaticBoxSizer(box3, wx.VERTICAL)
         bsizer3.Add(self.connect_btn, 0, wx.TOP|wx.LEFT, 10)
@@ -140,19 +128,13 @@ class ConnectPanel(ManagerPanel):
             
             self.monitor_interval_lbl.Disable()
             self.monitor_interval_spn.Disable()
-            
-            self.sampling_interval_lbl.Disable()
-            self.sampling_interval_spn.Disable()
-            
+                        
         else:
             # If we have a manager, then we can should load the interval
             # parameters first
             
             val = self.manager.monitor_interval
             self.monitor_interval_spn.SetValue(val)
-            
-            val = self.manager.sampling_interval
-            self.sampling_interval_spn.SetValue(val)
             
             # Now we enable/disable buttons based on connection 
             if self.manager.connected:
@@ -163,10 +145,7 @@ class ConnectPanel(ManagerPanel):
                 # And the parameters cannot be changed
                 self.monitor_interval_lbl.Disable()
                 self.monitor_interval_spn.Disable()
-                
-                self.sampling_interval_lbl.Disable()
-                self.sampling_interval_spn.Disable()
-                
+                    
             else:
                 # If disconnected, the only option is Connect
                 self.connect_btn.Enable()
@@ -177,8 +156,6 @@ class ConnectPanel(ManagerPanel):
                 self.monitor_interval_lbl.Enable()
                 self.monitor_interval_spn.Enable()
                 
-                self.sampling_interval_lbl.Enable()
-                self.sampling_interval_spn.Enable()
 
     def on_connect(self, event):
         """Handles the connection events"""
