@@ -5,6 +5,7 @@
 import wx
 import core.ccdl as ccdl
 import copy
+import traceback
 from ctypes import *
 from core.variables import *
 from core.manager import EmotivManager, ManagerWrapper
@@ -13,7 +14,8 @@ __dir__ = ["ManagerPanel", "ConnectPanel", "UserPanel",
            "HeadsetPanel"]
 
 
-SENSOR_POSITIONS = {ED_AF3 : (85, 62), ED_F7 : (37, 113), ED_F3 : (118, 109),
+SENSOR_POSITIONS = {ED_CMS : (37, 233), ED_DRL : (274, 233),
+                    ED_AF3 : (85, 62), ED_F7 : (37, 113), ED_F3 : (118, 109),
                     ED_FC5 : (67, 146), ED_T7 : (19, 190), ED_P7 : (70, 287),
                     ED_O1 : (114, 336), ED_O2 : (196, 336), ED_P8 : (241, 287),
                     ED_T8 : (291, 190), ED_FC6 : (243, 146), ED_F4 : (192, 109),
@@ -169,7 +171,7 @@ class ConnectPanel(ManagerPanel):
                 print "...Set"
                 print mngr.monitoring
             except Exception as e:
-                dlg = wx.MessageDialog(self, "%s" % e,
+                dlg = wx.MessageDialog(self, "%s" % traceback.format_exc(),
                                'Error While Connecting',
                                wx.OK | wx.ICON_INFORMATION
                                #wx.YES_NO | wx.NO_DEFAULT | wx.CANCEL | wx.ICON_INFORMATION
@@ -205,7 +207,7 @@ class SensorPanel(wx.Panel):
         
         self._sensor_id = sensor_id
         #self.SetAlignment(wx.ALIGN_LEFT)
-        if sensor_id in SENSORS:
+        if sensor_id in COMPLETE_SENSORS:
             self._sensor_name = SENSOR_NAMES[sensor_id]
         else:
             self._sensor_name = "???"
@@ -290,7 +292,7 @@ class UserPanel(ManagerPanel):
         self.sensor_panel.Bind(wx.EVT_ERASE_BACKGROUND, self.on_erase_background)
         
         # Creates the sensors and adds them to the sensor panel
-        sensors = [SensorPanel(self.sensor_panel, x) for x in SENSORS]
+        sensors = [SensorPanel(self.sensor_panel, x) for x in COMPLETE_SENSORS]
         self.sensors = tuple(sensors)
         self.SetSize(img.GetSize())
     

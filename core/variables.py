@@ -5,6 +5,10 @@
 ED_COUNTER = 0
 ED_INTERPOLATED = 1
 ED_RAW_CQ = 2
+
+ED_CMS = 0
+ED_DRL = 1
+
 ED_AF3 = 3
 ED_F7 = 4 
 ED_F3 = 5
@@ -33,11 +37,15 @@ ED_SYNC_SIGNAL = 24
 SENSORS = (ED_AF3, ED_F7, ED_F3, ED_FC5, ED_T7, ED_P7, ED_O1, ED_O2,
            ED_P8, ED_T8, ED_FC6, ED_F4, ED_F8, ED_AF4)
 
-SENSOR_NAMES = {ED_AF3 : "AF3", ED_F7 : "F7", ED_F3 : "F3", ED_FC5 : "FC5",
+COMPLETE_SENSORS = (ED_CMS, ED_DRL, ED_AF3, ED_F7, ED_F3, ED_FC5, ED_T7, ED_P7, 
+                    ED_O1, ED_O2, ED_P8, ED_T8, ED_FC6, ED_F4, ED_F8, ED_AF4)
+
+
+SENSOR_NAMES = {ED_CMS : "CMS", ED_DRL : "DRL",  # The two Common Sense Mode references
+                ED_AF3 : "AF3", ED_F7 : "F7", ED_F3 : "F3", ED_FC5 : "FC5",
                 ED_T7 : "T7", ED_P7 : "P7", ED_O1 : "O1", ED_O2 : "O2",
                 ED_P8 : "P8", ED_T8 : "T8", ED_FC6 : "FC6", ED_F4 : "F4",
                 ED_F8 : "F8", ED_AF4 : "AF4"}
-
 
 
 CHANNELS = (ED_COUNTER, ED_AF3, ED_F7, ED_F3, ED_FC5, ED_T7, ED_P7,

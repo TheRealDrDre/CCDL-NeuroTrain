@@ -4,6 +4,20 @@ import wx
 from core.manager import ManagerWrapper
 
 class Recorder(object, ManagerWrapper):
+    """A simple object that just records the data"""
+    def __init__(self, filename):
+        self._filename = filename
+    
+    def init_file(self):
+        """Inits the file sink"""
+        self._file = File(self.filename, "w")
+        
+    
+    def receive_sensor_data(self, data):
+        """Saves sensory data on a file"""
+        
+    
+    
     def store_sensor_data(self, C=len(variables.CHANNELS)):
         """Collects the new data at every monitor interval"""
         

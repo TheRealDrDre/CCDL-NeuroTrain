@@ -74,7 +74,6 @@ print ">> "
 #------------------------------------------------------------------------------------------------------------------------------------------------------------
 option = int(raw_input())
 
-
 if option == 1:
     print libEDK.EE_EngineConnect("Emotiv Systems-5")
     if libEDK.EE_EngineConnect("Emotiv Systems-5") != 0:

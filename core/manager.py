@@ -227,7 +227,7 @@ class EmotivManager(object):
                 
                 # Sets the buffer to collect data
                 self.hData = self.edk.EE_DataCreate()
-                self.edk.EE_DataSetBufferSizeInSec(self.monitor_interval)
+                self.edk.EE_DataSetBufferSizeInSec( c_float(1) ) # self.monitor_interval
                 
                 # Creates and starts the monitor
                 self._monitor = Thread(target=self.monitor)
@@ -309,8 +309,8 @@ class EmotivManager(object):
                     #print "\tSignal: %s" % (self.wireless_signal)
                 
                     # Calls all the functions responsible for collecting data.
-                    store_sensor_data()
-                    store_sensor_quality()
+                    self.store_sensor_data()
+                    self.store_sensor_quality()
                     #execute_event_functions(SENSOR_EVENT)
                     #execute_event_functions(SENSORY_QUALITY_EVENT)
                     
@@ -369,7 +369,7 @@ class EmotivManager(object):
     def store_sensor_quality(self):
         """Reads the sensor quality"""
         Q = {}
-        for sensor in variables.SENSORS:
+        for sensor in variables.COMPLETE_SENSORS:
             Q[sensor] = self.edk.ES_GetContactQuality(self.eState, sensor);
             name = variables.SENSOR_NAMES[sensor]
             print "   %s : %d" % (name, Q[sensor])
@@ -387,7 +387,7 @@ class EmotivManager(object):
             # If connected, change the value and notify
             # all the relevant listeners
             self._has_user = val
-            self.execute_event_functions(ccdl.USER_EVENT)
+            self.execute_event_functions(ccdl.USER_EVENT, None)
             
         else:
             # here should raise some exceptions --- cannot
@@ -403,7 +403,7 @@ class EmotivManager(object):
     def battery_level(self, val):
         if val != self.battery_level:
             self._battery_level = val
-            self.execute_event_functions(ccdl.CONNECTION_EVENT)
+            self.execute_event_functions(ccdl.CONNECTION_EVENT, None)
     
     @property
     def wireless_signal(self):
@@ -421,7 +421,7 @@ class EmotivManager(object):
             if val == variables.EDK_NO_SIGNAL:
                 self.has_user = False
             
-            self.execute_event_functions(ccdl.CONNECTION_EVENT)
+            self.execute_event_functions(ccdl.CONNECTION_EVENT, None)
     
     @property
     def sensor_quality(self):
