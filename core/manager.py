@@ -69,8 +69,8 @@ class EmotivManager(object):
         self._monitor_interval = 0.1
         self._listeners = dict(zip(ccdl.EVENTS, [[] for i in ccdl.EVENTS]))
         
-        self._sensor_quality = dict(zip(variables.SENSORS,
-                                    [0] * len(variables.SENSORS)))
+        self._sensor_quality = dict(zip(variables.COMPLETE_SENSORS,
+                                    [0] * len(variables.COMPLETE_SENSORS)))
         
         self._battery_level = 0
         self._wireless_signal = variables.EDK_NO_SIGNAL
@@ -250,6 +250,7 @@ class EmotivManager(object):
             if state == variables.EDK_OK:
                 # If we received an event, it means that we must have an user
                 # (unless the event was UserRemoved)
+                
                 if not self.has_user:
                     self.has_user = True
                     
@@ -313,10 +314,7 @@ class EmotivManager(object):
                     self.store_sensor_quality()
                     #execute_event_functions(SENSOR_EVENT)
                     #execute_event_functions(SENSORY_QUALITY_EVENT)
-                    
-                    #self.store_data()
-                    #self.store_sensor_quality()
-                
+                                    
                 else:
                     # Just for debug here.
                     print "[%d] Other event: %d" % (counter, eventType)
@@ -327,6 +325,7 @@ class EmotivManager(object):
                 
                 # *** THAT IS ACTUALLY NOT TRUE!! ***
                 #self.has_user = False
+                print "No event"
                 pass
 
             else:
@@ -368,11 +367,11 @@ class EmotivManager(object):
         
     def store_sensor_quality(self):
         """Reads the sensor quality"""
+        print("   REading sensor quality")
         Q = {}
         for sensor in variables.COMPLETE_SENSORS:
             Q[sensor] = self.edk.ES_GetContactQuality(self.eState, sensor);
-            name = variables.SENSOR_NAMES[sensor]
-            print "   %s : %d" % (name, Q[sensor])
+            
         self.sensor_quality = Q
 
     @property
@@ -432,7 +431,8 @@ class EmotivManager(object):
     def sensor_quality(self, data):
         """Changes the sensor quality values"""
         self._sensor_quality = data
-        self.execute_event_functions( ccdl.SENSOR_EVENT, data )
+        print("..... SENSOR QUALITY BROADCASTED")
+        self.execute_event_functions( ccdl.SENSOR_QUALITY_EVENT, data )
     
     @property
     def sensor_data(self):
@@ -442,7 +442,7 @@ class EmotivManager(object):
     def sensor_data(self, data):
         """Updates the sensor data"""
         self._sensor_data = data
-        self.execute_event_functions( ccdl.SENSOR_QUALITY_EVENT, data)
+        self.execute_event_functions( ccdl.SAMPLING_EVENT, data)
     
     # ------------------------------------------------------------- #
     # EVENTS MODEL
@@ -516,7 +516,7 @@ class ManagerWrapper(object):
         self._manager = mngr
         if mngr is not None:
             for i in self.monitored_events:
-                mngr.add_listener(self.refresh)
+                mngr.add_listener(i, self.refresh)
             
         
     @property

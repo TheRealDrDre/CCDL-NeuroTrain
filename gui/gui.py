@@ -6,6 +6,7 @@ import wx
 import core.ccdl as ccdl
 import copy
 import traceback
+import core.variables as variables
 from ctypes import *
 from core.variables import *
 from core.manager import EmotivManager, ManagerWrapper
@@ -195,10 +196,11 @@ class ConnectPanel(ManagerPanel):
 
 class SensorPanel(wx.Panel):
     """A small widget that displays the state of a sensor"""
-    COLOR_MAP = {0 : wx.Colour(0,0,0),
-                 1 : wx.Colour(255,0,0),
-                 2 : wx.Colour(255, 255, 0),
-                 3 : wx.Colour(0,255,0)}
+    COLOR_MAP = {0 : wx.Colour(0,0,0),       # Black
+                 1 : wx.Colour(255,0,0),     # Red
+                 2 : wx.Colour(255, 153, 9), # Orange
+                 3 : wx.Colour(255, 255, 0), # Yellow
+                 4 : wx.Colour(0,255,0)}     # Green
     
     def __init__(self, parent, sensor_id=0, size=(50, 25)):
         wx.Panel.__init__(self, parent, -1,
@@ -211,10 +213,10 @@ class SensorPanel(wx.Panel):
             self._sensor_name = SENSOR_NAMES[sensor_id]
         else:
             self._sensor_name = "???"
-        self._checkbox = wx.CheckBox(self, -1, self._sensor_name)
+        self._checkbox = wx.CheckBox(self, -1, self._sensor_name, size=(45,20))
         self._sensor_enabled = False
         self._sensor_recording = False  ## Currently unused
-        self._quality = 0 ## Recordin quality
+        self._quality = -1 ## Recordin quality
         #self.do_layout()
         
     @property
@@ -259,13 +261,16 @@ class SensorPanel(wx.Panel):
     
     @quality.setter
     def quality(self, val):
+        print " **** QUALITY ****"
         if (self._quality != val):
             self._quality = val
+            self._checkbox.SetLabel("%s:%d" % (variables.SENSOR_NAMES[self.sensor_id], val))
+            self._checkbox.Refresh()
             if val in SensorPanel.COLOR_MAP.keys():
                 col = SensorPanel.COLOR_MAP[val]
-                self._checkbox.SetForegroundColour(val)
+                self._checkbox.SetForegroundColour(col)
             else:
-                self._checkbox.SetForegroundColour(wxColour(0,0,255))
+                self._checkbox.SetForegroundColour(wx.Colour(0,0,255))
 
 class UserPanel(ManagerPanel):
     """A Class that visualizes the user and its sensors"""
@@ -273,12 +278,16 @@ class UserPanel(ManagerPanel):
     def __init__(self, parent, manager):
         ManagerPanel.__init__(self, parent, manager,
                               manager_state=True,
-                              monitored_events=(ccdl.USER_EVENT, ccdl.MONITORING_EVENT,
-                                                ccdl.SENSOR_EVENT))
+                              monitored_events=(ccdl.USER_EVENT, ccdl.MONITORING_EVENT))
+        self.manager.add_listener(ccdl.SENSOR_QUALITY_EVENT, self.update_quality)
         #self.Bind(wx.EVT_ERASE_BACKGROUND, self.on_erase_background)
+        self._sensor_quality = dict(zip(variables.COMPLETE_SENSORS,
+                                    [0] * len(variables.COMPLETE_SENSORS)))
+
         
     def create_objects(self):
         """Creates the objects"""
+        
         self.user_lbl = wx.StaticText(self, -1, "No User Found")
 
         img = wx.Image("images/channels.gif", type=wx.BITMAP_TYPE_GIF)
@@ -309,6 +318,39 @@ class UserPanel(ManagerPanel):
             self._background_bitmap = bmp
             self.sensor_panel.Refresh()
         
+    @property
+    def sensor_quality(self):
+        """An array containing the recording quality of each sensor"""
+        return self._sensor_quality
+    
+    @sensor_quality.setter
+    def sensor_quality(self, data):
+        """Changes the sensor quality array values"""
+        print "Sensory quality setter: %s" % data
+        if data != self._sensor_quality:
+            self._sensor_quality = data
+            
+            for sensor in self.sensors:
+                sensor.quality = data[sensor[sensor.sensor_id]]
+            
+            for sensor in variables.COMPLETE_SENSORS:
+                name = variables.SENSOR_NAMES[sensor]
+                print "   %s : %d" % (name, data[sensor])
+              
+    def update_quality(self, data):
+        #print ".... SENSOR QUALITY RECEIVED: %s" % data
+        if data != self._sensor_quality:
+            self._sensor_quality = data
+            
+            for sensor in self.sensors:
+                sensor.quality = data[sensor.sensor_id]
+            
+            for sensor in variables.COMPLETE_SENSORS:
+                name = variables.SENSOR_NAMES[sensor]
+                print "   %s : %d" % (name, data[sensor])
+        self.sensory_quality = data
+
+    
     def do_layout(self):
         """Lays out the components"""
         box = wx.StaticBox(self, -1, "User")
@@ -322,8 +364,8 @@ class UserPanel(ManagerPanel):
         sizer.Add(bsizer, 0, wx.ALL | wx.EXPAND, 25)
         sizer.Add(self.sensor_panel)
         
-        
         self.SetSizerAndFit(sizer)
+    
     
     def on_erase_background(self, evt):
         """Redraws the background image"""
@@ -349,10 +391,7 @@ class UserPanel(ManagerPanel):
                 i.Disable()
             
     
-    def update_quality(self):
-        Q = copy.copy(self.manager.sensor_quality)
-        for sensor in self.sensors:
-            sensor.quality = Q[sensor[sensor.sensor_id]]
+        
     
     def refresh(self, arg=None):  # ARG argument is unused
         """Updates the components based on the manager's state"""
