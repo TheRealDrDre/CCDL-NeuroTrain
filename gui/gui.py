@@ -103,17 +103,17 @@ class ConnectPanel(ManagerPanel):
         self.disconnect_btn.SetSize(self.connect_btn.GetBestSize())
         
         box1 = wx.BoxSizer(wx.HORIZONTAL)
-        box1.Add(self.monitor_interval_lbl)
-        box1.Add(self.monitor_interval_spn)
+        box1.Add(self.monitor_interval_lbl, 0, wx.ALL|wx.LEFT, 5)
+        box1.Add(self.monitor_interval_spn, 0, wx.ALL|wx.CENTER, 5)
 
         box3 = wx.StaticBox(self, -1, "EDK Connection")
         bsizer3 = wx.StaticBoxSizer(box3, wx.VERTICAL)
-        bsizer3.Add(self.connect_btn, 0, wx.TOP|wx.LEFT, 10)
-        bsizer3.Add(self.disconnect_btn, 0, wx.TOP|wx.LEFT, 10)
-        bsizer3.Add(box1, 0, wx.TOP|wx.LEFT, 10)
+        bsizer3.Add(self.connect_btn, 0, wx.TOP|wx.LEFT, 5)
+        bsizer3.Add(self.disconnect_btn, 0, wx.TOP|wx.LEFT, 5)
+        bsizer3.Add(box1, 0, wx.ALL|wx.LEFT, 5)
         
         box = wx.BoxSizer(wx.HORIZONTAL)
-        box.Add(bsizer3, 1, wx.EXPAND|wx.ALL, 25)
+        box.Add(bsizer3, 1, wx.EXPAND|wx.ALL, 10)
         
         self.SetSizer(box)
 
@@ -284,20 +284,20 @@ class UserPanel(ManagerPanel):
     def create_objects(self):
         """Creates the objects"""
         ## NEW CODE FROM HEADSET PANEL:
-        self._battery_lbl = wx.StaticText(self, -1, "Battery Level:")
-        self._wireless_lbl = wx.StaticText(self, -1, "Wireless Signal Strength:")
-        self._sampling_rate_lbl = wx.StaticText(self, -1, "Sampling Rate:")
-        self._num_channels_lbl = wx.StaticText(self, -1, "Num of Available Channels:")
-        self._time_lbl = wx.StaticText(self, -1, "Time from start:")
+        self._battery_lbl = wx.StaticText(self, -1, "Battery Level:", size=(150, 20))
+        self._wireless_lbl = wx.StaticText(self, -1, "Wireless Signal Strength:", size=(150, 20))
+        self._sampling_rate_lbl = wx.StaticText(self, -1, "Sampling Rate:", size=(150, 20))
+        self._num_channels_lbl = wx.StaticText(self, -1, "Num of Available Channels:", size=(150, 20))
+        self._time_lbl = wx.StaticText(self, -1, "Time from start:", size=(150, 20))
         
         # Gauges
         self._battery_gge = wx.Gauge(self, -1, 5, size=(100, 20))
         self._wireless_gge= wx.Gauge(self, -1, 2, size=(100, 20))
         
         # Text info:
-        self._sampling_rate_txt = wx.StaticText(self, -1, "128")
-        self._num_channels_txt = wx.StaticText(self, -1, "18")
-        self._time_txt = wx.StaticText(self, -1, "0:00")
+        self._sampling_rate_txt = wx.StaticText(self, -1, "128", size=(100, 20))
+        self._num_channels_txt = wx.StaticText(self, -1, "18", size=(100, 20))
+        self._time_txt = wx.StaticText(self, -1, "0:00", size=(100, 20))
         
         self.all_components = (self._battery_lbl, self._wireless_lbl,
                                self._sampling_rate_lbl, self._time_lbl,
@@ -388,12 +388,12 @@ class UserPanel(ManagerPanel):
         for label in [self._battery_lbl, self._wireless_lbl,
                       self._sampling_rate_lbl, self._time_lbl,
                       self._num_channels_lbl]:
-            sizer1.Add(label)
+            sizer1.Add(label, 1, wx.ALL| wx.EXPAND, 1)
             
         for cntrl in [self._battery_gge, self._wireless_gge,
                       self._sampling_rate_txt, self._time_txt,
                       self._num_channels_txt]:
-            sizer2.Add(cntrl)
+            sizer2.Add(cntrl, 1, wx.ALL| wx.EXPAND, 1)
             
         sizer3 = wx.BoxSizer(wx.HORIZONTAL)
         sizer3.Add(sizer1)
@@ -403,7 +403,7 @@ class UserPanel(ManagerPanel):
         bsizer.Add(sizer)
         
         box = wx.BoxSizer(wx.HORIZONTAL)
-        box.Add(bsizer, 1, wx.EXPAND|wx.ALL, 25)
+        box.Add(bsizer, 1, wx.EXPAND|wx.ALL, 10)
         
         self.SetSizerAndFit(box)
         self.refresh(None)
@@ -498,8 +498,8 @@ class NeuroTrainFrame(wx.Frame):
         #hbox.Add(self.headset_panel)
         
         box = wx.BoxSizer(wx.VERTICAL)
-        box.Add(self.connect_panel)
-        box.Add(hbox)
+        box.Add(self.connect_panel, 1, wx.HORIZONTAL|wx.EXPAND, 0)
+        box.Add(hbox, 1, wx.ALL | wx.EXPAND, 0)
         
         metabox = wx.BoxSizer(wx.HORIZONTAL)
         metabox.Add(box, wx.ALIGN_CENTER, 10)
