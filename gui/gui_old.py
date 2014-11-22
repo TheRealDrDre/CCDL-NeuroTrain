@@ -299,18 +299,10 @@ class UserPanel(ManagerPanel):
         self._num_channels_txt = wx.StaticText(self, -1, "18")
         self._time_txt = wx.StaticText(self, -1, "0:00")
         
-        self.all_components = (self._battery_lbl, self._wireless_lbl,
-                               self._sampling_rate_lbl, self._time_lbl,
-                               self._num_channels_lbl,
-                               
-                               # Gauges
-                               self._battery_gge, self._wireless_gge,
-                               
-                               # Infotexts
-                               self._sampling_rate_txt, self._num_channels_txt,
-                               self._time_txt)
         # OLD CODE
         
+        self.user_lbl = wx.StaticText(self, -1, "No User Found")
+
         img = wx.Image("images/channels.gif", type=wx.BITMAP_TYPE_GIF)
         img = img.ConvertToBitmap()
         self.enabled_img = img
@@ -354,9 +346,9 @@ class UserPanel(ManagerPanel):
             for sensor in self.sensors:
                 sensor.quality = data[sensor[sensor.sensor_id]]
             
-            #for sensor in variables.COMPLETE_SENSORS:
-            #    name = variables.SENSOR_NAMES[sensor]
-            #   print "   %s : %d" % (name, data[sensor])
+            for sensor in variables.COMPLETE_SENSORS:
+                name = variables.SENSOR_NAMES[sensor]
+                print "   %s : %d" % (name, data[sensor])
               
     def update_quality(self, data):
         #print ".... SENSOR QUALITY RECEIVED: %s" % data
@@ -401,11 +393,7 @@ class UserPanel(ManagerPanel):
         sizer.Add(sizer3)
         sizer.Add(self.sensor_panel)
         bsizer.Add(sizer)
-        
-        box = wx.BoxSizer(wx.HORIZONTAL)
-        box.Add(bsizer, 1, wx.EXPAND|wx.ALL, 25)
-        
-        self.SetSizerAndFit(box)
+        self.SetSizerAndFit(bsizer)
         self.refresh(None)
     
     
@@ -426,23 +414,12 @@ class UserPanel(ManagerPanel):
             self.user_lbl.Enable()
             for i in self.sensors:
                 i.Enable()
-            for c in self.all_components:
-                c.Enable()
             
         else:
+            self.user_lbl.Disable()
             for i in self.sensors:
                 i.Disable()
-            for c in self.all_components:
-                c.Disable()
     
-    def update_gauges(self):
-        """Updates the values of gauges and labels"""
-        mgr = self.manager
-        self._battery_gge.SetValue(mgr.battery_level)
-        self._wireless_gge.SetValue(mgr.wireless_signal)
-        self._sampling_rate_txt.SetLabel("128")
-        self._num_channels_txt.SetLabel("18")   
-                    
     
     def refresh(self, arg=None):  # ARG argument is unused
         """Updates the components based on the manager's state"""
@@ -450,25 +427,100 @@ class UserPanel(ManagerPanel):
         if has_user is not self.manager_state:
             self.manager_state = has_user
             if self.manager.has_user:
-                self.update_gauges()
-                for c in self.all_components:
-                    c.Enable()
-                
-                #self.user_lbl.SetLabel("Headset Connected")
+                self.user_lbl.SetLabel("Headset Connected")
                 self.set_all_enabled(True)
                 self.background_bitmap = self.enabled_img
-
             else:
+                self.user_lbl.SetLabel("No Headset Found")
                 self.set_all_enabled(False)
                 self.background_bitmap = self.disabled_img
-                # A few fix-ups:
-                self._sampling_rate_txt.SetLabel("--")
-                self._num_channels_txt.SetLabel("--")
-                self._battery_gge.SetValue(0)
-                self._wireless_gge.SetValue(0)
             self.Update()
 
 
+class HeadsetPanel(ManagerPanel):
+    """A class that visualizes information about a headset"""
+    def __init__(self, parent, manager):
+        ManagerPanel.__init__(self, parent, manager,
+                              manager_state=True,
+                              monitored_events=(ccdl.CONNECTION_EVENT, ))
+        
+    def create_objects(self):
+        """Instantiates all the objects in a headset panel"""
+        self._battery_lbl = wx.StaticText(self, -1, "Battery Level:")
+        self._wireless_lbl = wx.StaticText(self, -1, "Wireless Signal Strength:")
+        self._sampling_rate_lbl = wx.StaticText(self, -1, "Sampling Rate:")
+        self._num_channels_lbl = wx.StaticText(self, -1, "Num of Available Channels:")
+        self._time_lbl = wx.StaticText(self, -1, "Time from start:")
+        
+        # Gauges
+        self._battery_gge = wx.Gauge(self, -1, 5, size=(100, 20))
+        self._wireless_gge= wx.Gauge(self, -1, 2, size=(100, 20))
+        
+        # Text infor:
+        self._sampling_rate_txt = wx.StaticText(self, -1, "128")
+        self._num_channels_txt = wx.StaticText(self, -1, "18")
+        self._time_txt = wx.StaticText(self, -1, "0:00")
+        
+        self.all_components = (self._battery_lbl, self._wireless_lbl,
+                               self._sampling_rate_lbl, self._time_lbl,
+                               self._num_channels_lbl,
+                               
+                               # Gauges
+                               self._battery_gge, self._wireless_gge,
+                               
+                               # Infotexts
+                               self._sampling_rate_txt, self._num_channels_txt,
+                               self._time_txt)
+
+    def do_layout(self):
+        """Lays out the components. The components are lined up as
+        two columns of five rows each; labels on the left, values
+        and gauges on the right
+        """
+        sizer1 = wx.BoxSizer(wx.VERTICAL)
+        sizer2 = wx.BoxSizer(wx.VERTICAL)
+        for label in [self._battery_lbl, self._wireless_lbl,
+                      self._sampling_rate_lbl, self._time_lbl,
+                      self._num_channels_lbl]:
+            sizer1.Add(label)
+            
+        for cntrl in [self._battery_gge, self._wireless_gge,
+                      self._sampling_rate_txt, self._time_txt,
+                      self._num_channels_txt]:
+            sizer2.Add(cntrl)
+            
+        sizer3 = wx.BoxSizer(wx.HORIZONTAL)
+        sizer3.Add(sizer1)
+        sizer3.Add(sizer2)
+        self.SetSizerAndFit(sizer3)
+        self.refresh(None)
+        
+
+    def update_gauges(self):
+        """Updates the values of gauges and labels"""
+        mgr = self.manager
+        self._battery_gge.SetValue(mgr.battery_level)
+        self._wireless_gge.SetValue(mgr.wireless_signal)
+        self._sampling_rate_txt.SetLabel("128")
+        self._num_channels_txt.SetLabel("18")   
+        
+    def refresh(self, arg=None):  # Argument is unused
+        """Refreshes the component in case of events"""
+        t = self.manager.edk.ES_GetTimeFromStart(self.manager.eState)
+        
+        has_user = self.manager.has_user
+        if has_user:
+            self.update_gauges()
+            for c in self.all_components:
+                c.Enable()
+        else:
+            for c in self.all_components:
+                c.Disable()
+            # A few fix-ups:
+            self._sampling_rate_txt.SetLabel("--")
+            self._num_channels_txt.SetLabel("--")
+            self._battery_gge.SetValue(0)
+            self._wireless_gge.SetValue(0)
 
 class NeuroTrainFrame(wx.Frame):
     """The main frame"""
@@ -488,14 +540,14 @@ class NeuroTrainFrame(wx.Frame):
         self.manager = EmotivManager()
         self.connect_panel = ConnectPanel(self, self.manager)
         self.user_panel = UserPanel(self, self.manager)
-        #self.headset_panel = HeadsetPanel(self, self.manager)
+        self.headset_panel = HeadsetPanel(self, self.manager)
         
         
     def do_layout(self):
         """Lays out the interface"""
         hbox = wx.BoxSizer(wx.HORIZONTAL)
         hbox.Add(self.user_panel)
-        #hbox.Add(self.headset_panel)
+        hbox.Add(self.headset_panel)
         
         box = wx.BoxSizer(wx.VERTICAL)
         box.Add(self.connect_panel)
