@@ -10,7 +10,7 @@ import core.variables as variables
 from ctypes import *
 from core.variables import *
 from core.manager import EmotivManager, ManagerWrapper
-from .sensor import SensorPanel
+from .sensor import SensorPanel2
 
 __all__ = ["ManagerPanel", "ConnectPanel", "UserPanel"]
 
@@ -189,13 +189,90 @@ class ConnectPanel(ManagerPanel):
         self.refresh(None)
             
 
+class SensorPanel(wx.Panel):
+    """A small widget that displays the state of a sensor"""
+    COLOR_MAP = {0 : wx.Colour(0,0,0),       # Black
+                 1 : wx.Colour(255,0,0),     # Red
+                 2 : wx.Colour(255, 153, 9), # Orange
+                 3 : wx.Colour(255, 255, 0), # Yellow
+                 4 : wx.Colour(0,255,0)}     # Green
+    
+    def __init__(self, parent, sensor_id=0, size=(50, 25)):
+        wx.Panel.__init__(self, parent, -1,
+                          style=wx.NO_FULL_REPAINT_ON_RESIZE,
+                          size=size)
+        
+        self._sensor_id = sensor_id
+
+        if sensor_id in COMPLETE_SENSORS:
+            self._sensor_name = SENSOR_NAMES[sensor_id]
+        else:
+            self._sensor_name = "???"
+
+        self._checkbox = wx.CheckBox(self, -1, self._sensor_name, size=(45,20))
+        self._sensor_enabled = False
+        self._sensor_recording = False  ## Currently unused
+        self._quality = -1 ## Recordin quality
+        
+    @property
+    def sensor_id(self):
+        return self._sensor_id
+    
+    @sensor_id.setter
+    def sensor_id(self, id):
+        self._sensor_id = id
+        self._sensor_name = SENSOR_NAMES[id]
+    
+    @property
+    def sensor_name(self):
+        """Returns the sensor name"""
+        return self._sensor_name
+    
+    @sensor_name.setter
+    def sensor_name(self, name):
+        """Sets the sensor name (nothing else)"""
+        self._sensor_name = name
+        
+    @property
+    def sensor_enabled(self):
+        """Returns whether the sensor is enabled or not"""
+        return self._sensor_enabled
+    
+    @sensor_enabled.setter
+    def sensor_enabled(self, bool):
+        """Sets the state of the sensor (enabled or not), and changes
+        the state of the GUI components accordingly
+        """
+        if bool:
+            self._checkbox.Enable()
+        else:
+            self._checkbox.Disable()
+        self._sensor_enabled = bool     
+    
+    
+    @property
+    def quality(self):
+        return self_quality
+    
+    @quality.setter
+    def quality(self, val):
+        if (self._quality != val):
+            self._quality = val
+            self._checkbox.SetLabel("%s:%d" % (variables.SENSOR_NAMES[self.sensor_id], val))
+            self._checkbox.Refresh()
+            if val in SensorPanel.COLOR_MAP.keys():
+                col = SensorPanel.COLOR_MAP[val]
+                self._checkbox.SetForegroundColour(col)
+            else:
+                self._checkbox.SetForegroundColour(wx.Colour(0, 0, 255))
+
 class UserPanel(ManagerPanel):
     """A Class that visualizes the user and its sensors"""
     
     def __init__(self, parent, manager):
         ManagerPanel.__init__(self, parent, manager,
                               manager_state=True,
-                              monitored_events=(ccdl.HEADSET_FOUND_EVENT,))
+                              monitored_events=(ccdl.USER_EVENT, ccdl.MONITORING_EVENT))
         self.manager.add_listener(ccdl.SENSOR_QUALITY_EVENT, self.update_quality)
         #self.Bind(wx.EVT_ERASE_BACKGROUND, self.on_erase_background)
         self._sensor_quality = dict(zip(variables.COMPLETE_SENSORS,
@@ -243,7 +320,7 @@ class UserPanel(ManagerPanel):
         self.sensor_panel.Bind(wx.EVT_ERASE_BACKGROUND, self.on_erase_background)
         
         # Creates the sensors and adds them to the sensor panel
-        sensors = [SensorPanel(self.sensor_panel, x) for x in COMPLETE_SENSORS]
+        sensors = [SensorPanel2(self.sensor_panel, x) for x in COMPLETE_SENSORS]
         self.sensors = tuple(sensors)
         self.SetSize(img.GetSize())
     
@@ -385,3 +462,7 @@ class UserPanel(ManagerPanel):
                 self._battery_gge.SetValue(0)
                 self._wireless_gge.SetValue(0)
             self.Update()
+
+
+
+

@@ -63,10 +63,10 @@ class EmotivManager(object):
         self.load_edk()
         self._connected = False # Whether connected or not
         self._has_user = False  # Whether there is a user or not
-        #self._sampling = False  # Whether sampling or not
-        #self._sampling_interval = 1      # Sampling interval in secs
         self._monitoring = False
         self._monitor_interval = 0.1
+        self._headset_connected = False
+        
         self._listeners = dict(zip(ccdl.EVENTS, [[] for i in ccdl.EVENTS]))
         
         self._sensor_quality = dict(zip(variables.COMPLETE_SENSORS,
@@ -245,7 +245,7 @@ class EmotivManager(object):
             
             # Retrieves the next event
             state = self.edk.EE_EngineGetNextEvent(self.eEvent)
-            print "[%d] Checked state: %s" % (counter, state)
+            print "[%d] Checked state: %s %s" % (counter, self.has_user, state)
 
             if state == variables.EDK_OK:
                 # If we received an event, it means that we must have an user
@@ -253,7 +253,6 @@ class EmotivManager(object):
                 
                 if not self.has_user:
                     self.has_user = True
-                    
                     
                 # if the call was successful, then we do have a new
                 # event, and we now need to examine its type.
@@ -294,6 +293,8 @@ class EmotivManager(object):
                     self.battery_level = level.value
                     
                     # Monitor Wireless Signal
+                    # This is the key marker for connection ---
+                    # when the signal is zero, we lost connection
                     self.wireless_signal = self.edk.ES_GetWirelessSignalStatus(self.eState)
                     
                     # Monitor Sampling Rate
@@ -301,10 +302,10 @@ class EmotivManager(object):
                     self.edk.EE_DataGetSamplingRate(self.userID, pointer(sr))
                     
                     # A simple print report for debug
-                    print("\tSamping rate: %s" % sr)
+                    #print("\tSamping rate: %s" % sr)
                     #print "\tCode: %d, %s" % (code, code is variables.EDK_OK)
                     #print "\tHeadset on: %d" % head
-                    print "\tNum of channels: %d" % num
+                    #print "\tNum of channels: %d" % num
                     #print "\tTime from start: %10.3f" % (t)
                     #print "\tBattery: %s/%s" % (level.value, max_level.value)
                     #print "\tSignal: %s" % (self.wireless_signal)
@@ -312,11 +313,8 @@ class EmotivManager(object):
                     # Calls all the functions responsible for collecting data.
                     self.store_sensor_data()
                     self.store_sensor_quality()
-                    #execute_event_functions(SENSOR_EVENT)
-                    #execute_event_functions(SENSORY_QUALITY_EVENT)
                                     
                 else:
-                    # Just for debug here.
                     print "[%d] Other event: %d" % (counter, eventType)
             
             elif state == variables.EDK_NO_EVENT:
@@ -336,8 +334,20 @@ class EmotivManager(object):
             time.sleep(self.monitor_interval)
             counter += 1
 
-    ## In the newest model, the monitor contiuously acquires data and stores
-    ## it in an increasingly large table.
+    @property
+    def headset_connected( self ):
+        return self._headset_connected
+    
+    @headset_connected.setter
+    def headset_connected( self, boolean ):
+        if boolean != self.head_connected:
+            self._headset_connected = boolean
+            self.execute_event_functions( ccdl.HEADSET_FOUND_EVENT, boolean )
+    
+
+    ## In the newest model, the monitor contiuously acquires data
+    ## and stores it in an internal table, which is dispatched to
+    ## the SENSOR_DATA event listeners.
     ##
     def store_sensor_data(self, C=len(variables.CHANNELS)):
         """Collects the new data at every monitor interval"""
@@ -415,12 +425,16 @@ class EmotivManager(object):
         if val != self._wireless_signal:
             if self._wireless_signal == variables.EDK_NO_SIGNAL:
                 self.has_user = True
+                self.headset_connected = True
             self._wireless_signal = val
             
             if val == variables.EDK_NO_SIGNAL:
                 self.has_user = False
+                self.headset_connected = False
             
-            self.execute_event_functions(ccdl.CONNECTION_EVENT, None)
+            # No need to call this... Headset events and User events wil
+            # be called when the has_user and headset_found variables are set
+            #self.execute_event_functions(ccdl.CONNECTION_EVENT, None)
     
     @property
     def sensor_quality(self):
@@ -461,7 +475,7 @@ class EmotivManager(object):
                 # Maybe throw an exception if it's not a function?
                 pass
         else:
-            raise ccdl.EventError(event_id)
+            raise ccdl.EventError(id)
 
 
     def execute_event_functions(self, event_id, arg):

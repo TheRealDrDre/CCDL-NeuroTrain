@@ -7,7 +7,8 @@
 ## --------------------------------------------------------------- ##
 ## TODOs
 ##
-##   1. Add a way to save sensor quality as well as sensor data
+##   1. Enable only when a headset is connected.
+##   2. Add a way to save sensor quality as well as sensor data
 ##   3. Add dialog error message when file already exists
 ## --------------------------------------------------------------- ##
 
@@ -36,7 +37,7 @@ class TimedSessionRecorder(ManagerPanel):
         """Inits a new Timed Session Recoding Panel"""
         ManagerPanel.__init__(self, parent, manager,
                               manager_state=True,
-                              monitored_events=(ccdl.USER_EVENT,))
+                              monitored_events=(ccdl.HEADSET_FOUND_EVENT,))
         self.manager.add_listener(ccdl.SAMPLING_EVENT, self.save_sensor_data)
         
     def refresh(self, param):
@@ -147,7 +148,7 @@ class TimedSessionRecorder(ManagerPanel):
     def update_interface(self):
         """Updates the interface based on the internal model"""
         self.on_spin(None)
-        if self.manager.has_user  or True:  # 'or True' for testing purposes
+        if self.manager.has_user :  # 'or True' for testing purposes
             self._filename_lbl.Enable()
             self._file_lbl.Enable()
             self._timer_lbl.Enable()

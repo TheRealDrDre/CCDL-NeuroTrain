@@ -7,21 +7,21 @@ import core.ccdl as ccdl
 from core.variables import *
 
 
-class SensorPanel2(wx.Panel):
+class SensorPanel( wx.Panel ):
     """A small widget that displays the state of a sensor"""
-    BACKGROUNDS  = {-1: wx.Colour(125, 125, 125),  # grey
-                    0 : wx.Colour(0,0,0),       # Black
-                    1 : wx.Colour(255,0,0),     # Red
-                    2 : wx.Colour(255, 153, 9), # Orange
-                    3 : wx.Colour(255, 255, 0), # Yellow
-                    4 : wx.Colour(0,255,0)}     # Green
+    BACKGROUNDS  = {-1: wx.Colour(180, 180, 180), # grey
+                    0 : wx.Colour(0, 0, 0),       # Black
+                    1 : wx.Colour(255, 0, 0),     # Red
+                    2 : wx.Colour(255, 153, 9),   # Orange
+                    3 : wx.Colour(255, 255, 0),   # Yellow
+                    4 : wx.Colour(0, 255, 0)}     # Green
     
-    FOREGROUNDS = {-1: wx.Colour(25, 25, 25),   # dark grey
-                   0 : wx.Colour(255,255,255),  # White
-                   1 : wx.Colour(255,255,255),  # White
-                   2 : wx.Colour(0, 0, 0),      # Black 
-                   3 : wx.Colour(0, 0, 0),      # Black
-                   4 : wx.Colour(255,255,255)} # White
+    FOREGROUNDS = {-1: wx.Colour(85, 85, 85),     # dark grey
+                   0 : wx.Colour(255, 255, 255),  # White
+                   1 : wx.Colour(255, 255, 255),  # White
+                   2 : wx.Colour(0, 0, 0),        # Black 
+                   3 : wx.Colour(0, 0, 0),        # Black
+                   4 : wx.Colour(255, 255, 255)}  # White
     
     def __init__(self, parent, sensor_id=0, size=(50, 25)):
         wx.Panel.__init__(self, parent, -1,
@@ -35,7 +35,6 @@ class SensorPanel2(wx.Panel):
         else:
             self._sensor_name = "???"
 
-        self._sensor_enabled = False
         self._quality = -1 ## Recording quality
         
         self.Bind(wx.EVT_PAINT, self.OnPaint)
@@ -60,22 +59,6 @@ class SensorPanel2(wx.Panel):
     def sensor_name(self, name):
         """Sets the sensor name (nothing else)"""
         self._sensor_name = name
-        
-    @property
-    def sensor_enabled(self):
-        """Returns whether the sensor is enabled or not"""
-        return self._sensor_enabled
-    
-    @sensor_enabled.setter
-    def sensor_enabled(self, bool):
-        """Sets the state of the sensor (enabled or not), and changes
-        the state of the GUI components accordingly
-        """
-        if bool:
-            self._checkbox.Enable()
-        else:
-            self._checkbox.Disable()
-        self._sensor_enabled = bool     
     
     
     @property
@@ -93,29 +76,36 @@ class SensorPanel2(wx.Panel):
     def OnPaint(self, event):
         dc = wx.PaintDC(self)
         dc.Clear()
+        
+        # It would be cool to be able to use Graphics Context objects.
+        # Not sure it will be possible.
+        # dc = wx.GraphicsContext.Create(dc)
+        #dc.SetAntialiasMode(wx.ANTIALIAS_DEFAULT)
+        
         dc.SetFont(self.GetFont())
         w, h = self.GetSize()
         radius = min(w, h)/2
         
         if self.Enabled:
-            fg = SensorPanel2.FOREGROUNDS[self.quality]
-            bg = SensorPanel2.BACKGROUNDS[self.quality]
+            fg = SensorPanel.FOREGROUNDS[self.quality]
+            bg = SensorPanel.BACKGROUNDS[self.quality]
         else:
-            fg = SensorPanel2.FOREGROUNDS[-1]
-            bg = SensorPanel2.BACKGROUNDS[-1]
+            fg = SensorPanel.FOREGROUNDS[-1]
+            bg = SensorPanel.BACKGROUNDS[-1]
             
         dc.SetPen(wx.Pen(bg)) 
         dc.SetBrush(wx.Brush(bg))
         dc.DrawCircle(w/2, h/2, radius)
         
+        # If DC were a Grphics Context
+        #dc.DrawEllipse(0, 0, w, h)
         textWidth, textHeight = dc.GetTextExtent( self.sensor_name )
         textX = (w - textWidth) / 2
         textY = (h - textHeight) / 2
-        #dc.SetPen(wx.Pen(fg))
-        #dc.SetBrush(wx.Brush(fg))
         dc.SetTextForeground(fg)
         dc.DrawText(self.sensor_name, textX, textY)
     
     def OnSize(self, event):
+        """Repaints when the object is resized"""
         self.Refresh()
 
