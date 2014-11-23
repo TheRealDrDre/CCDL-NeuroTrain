@@ -7,43 +7,26 @@ class Recorder(object, ManagerWrapper):
     """A simple object that just records the data"""
     def __init__(self, filename):
         self._filename = filename
+        self._file_opened = False
+    
+    @property
+    def filename(self):
+        return self._filename 
+        
+    @filename.setter
+    def filename(self, name)
+        self._filename = name
     
     def init_file(self):
         """Inits the file sink"""
         self._file = File(self.filename, "w")
-        
+        self._file_opened = True
     
     def receive_sensor_data(self, data):
         """Saves sensory data on a file"""
+        for i in data:
+            self.file.write("%03f" % i)
         
-    
-    
-    def store_sensor_data(self, C=len(variables.CHANNELS)):
-        """Collects the new data at every monitor interval"""
-        
-        # Updates the data array
-        self.edk.EE_DataUpdateHandle(0, self.hData)
-        self.edk.EE_DataGetNumberOfSample(self.hData, self.nSamplesTaken)
-        N = self.nSamplesTaken[0]
-        
-        if N != 0:   # Only if we have collected > 0 samples
-            # Create the C-style array for storing the data
-            arr = (ctypes.c_double * N)()
-            ctypes.cast(arr, ctypes.POINTER(ctypes.c_double))
-            
-            # Create a numpy array and copy the C-style array
-            # data into it.
-            data = np.zeros((N, C))
-            for sample in range(N):
-                for channel in range(C):
-                    self.edk.EE_DataGet(self.hData,
-                                        variables.CHANNELS[channel],
-                                        byref(arr), N)
-                    data[sample, channel] = arr[sample]
-            
-            # Save data into an internal growing array
-            self.data_buffer = np.vstack( (self.data_buffer, data) )
-
 
 class Game(object, ManagerWrapper):
     """A Game is an object that contains and uses analyzers to

@@ -1,3 +1,3 @@
 #!/usr/bin/env python
 
-__dir__ = ["manager", "variables", "ccdl"]
+__all__ = ["manager", "variables", "ccdl"]
