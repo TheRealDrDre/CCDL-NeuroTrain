@@ -7,9 +7,8 @@
 ## --------------------------------------------------------------- ##
 ## TODOs
 ##
-##   1. Enable only when a headset is connected.
-##   2. Add a way to save sensor quality as well as sensor data
-##   3. Add dialog error message when file already exists
+##   1. Add a way to save sensor quality as well as sensor data
+##   2. Add dialog error message when file already exists
 ## --------------------------------------------------------------- ##
 
 from .gui import ManagerPanel
@@ -22,8 +21,8 @@ import wx
 import traceback
 import numpy as np
 
-wildcard = "EEG raw data (*.eeg)|*.eeg|"     \
-           "Text File (*.txt)|*.txt|" \
+wildcard = "EEG raw data (*.eeg)|*.eeg|"    \
+           "Text File (*.txt)|*.txt|"       \
            "All files (*.*)|*.*"
 
 class TimedSessionRecorder(ManagerPanel):
@@ -234,16 +233,30 @@ class TimedSessionRecorder(ManagerPanel):
         # Show the dialog and retrieve the user response. If it is the OK response, 
         # process the data.
         if dlg.ShowModal() == wx.ID_OK:
-            self.filename = dlg.GetPath()
-            print dlg.GetPath()
-            print self.filename
-
+            fname = dlg.GetPath()
         dlg.Destroy()
+        
+        # If the filename exists, ask for confirmation
+        if os.path.exists( fname ):
+            dlg = wx.MessageDialog(self, "File already exists. Overwrite?",
+                                   "Potential problem with file",
+                                   wx.YES_NO | wx.NO_DEFAULT | wx.ICON_INFORMATION
+                                   )
+
+            response = dlg.ShowModal()
+            if response == wx.ID_YES:
+                self.filename = fname
+            elif response == wx.ID_NO:
+                self.filename = None
+            
+        else:
+            # If the file does not exists, we can proceed
+            self.filename = fname
+            
         self.update_interface()
     
     def on_abort_button(self, event):
         """Aborts a recording session by setting the recording flag to false"""
-        print("On abort")
         if self.recording:
             self.recording = False
             
@@ -256,8 +269,13 @@ class TimedSessionRecorder(ManagerPanel):
         """
         return self._filename 
         
+        
     @filename.setter
     def filename(self, name):
+        """
+        Sets the filename propertye
+        @param  name  the new path where data is saved
+        """
         if name is not None:
             print("Setting new filename to : %s" % name)
             try:
@@ -273,6 +291,7 @@ class TimedSessionRecorder(ManagerPanel):
                                )
                 dlg.ShowModal()
                 dlg.Destroy()
+                
         else:
             self._filename = None
             self.file_open = False

@@ -14,10 +14,14 @@ from .gui import *
 from .recording import TimedSessionRecorder
 from core.manager import EmotivManager, ManagerWrapper
 
+__all__ = [ "NeuroTrainFrame" ]
+
+TITLE = "Cognition & Cortical Dynamics EEG Application"
+
 class NeuroTrainFrame(wx.Frame):
-    """The main frame"""
+    """The main frame window"""
     
-    def __init__(self, parent, title):
+    def __init__(self, parent, title=TITLE):
         """Inits the frame"""
         wx.Frame.__init__(self, parent, title=title, size=(250, 200))
         self.create_objects()

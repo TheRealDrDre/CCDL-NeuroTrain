@@ -260,7 +260,7 @@ class EmotivManager(object):
                 eventType = self.edk.EE_EmoEngineEventGetType(self.eEvent)
                 
                 if eventType == variables.EE_User_Added:   # Code 16, 0x0010
-                    print "[%d] User added" % counter
+                    #print "[%d] User added" % counter
                     #if not self.has_user:
                     #    self.has_user = True
                     
@@ -274,13 +274,12 @@ class EmotivManager(object):
                     self.has_user = False
                     
                 elif eventType == variables.EE_EmoState_Updated:
-                    print "[%d] EmoState updated: (%d)"  % (counter, eventType)
+                    #print "[%d] EmoState updated: (%d)"  % (counter, eventType)
                     
                     self.execute_event_functions(ccdl.MONITORING_EVENT, None)
                     
                     # This is a bunch of quick debug code.
                     self.edk.EE_EmoEngineEventGetUserId(self.eEvent, self.user)
-                    print "\tFor user: %s" %self.userID
                     code = self.edk.EE_EmoEngineEventGetEmoState(self.eEvent, self.eState)
                     #head = self.edk.ES_GetHeadsetOn(self.eState)
                     num = self.edk.ES_GetNumContactQualityChannels(self.eState)
@@ -323,7 +322,7 @@ class EmotivManager(object):
                 
                 # *** THAT IS ACTUALLY NOT TRUE!! ***
                 #self.has_user = False
-                print "No event"
+                #print "No event"
                 pass
 
             else:
@@ -340,7 +339,7 @@ class EmotivManager(object):
     
     @headset_connected.setter
     def headset_connected( self, boolean ):
-        if boolean != self.head_connected:
+        if boolean != self._headset_connected:
             self._headset_connected = boolean
             self.execute_event_functions( ccdl.HEADSET_FOUND_EVENT, boolean )
     
