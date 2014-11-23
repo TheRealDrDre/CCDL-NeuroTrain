@@ -10,6 +10,7 @@ import core.variables as variables
 from ctypes import *
 from core.variables import *
 from core.manager import EmotivManager, ManagerWrapper
+from .sensor import SensorPanel2
 
 __all__ = ["ManagerPanel", "ConnectPanel", "UserPanel"]
 
@@ -202,16 +203,16 @@ class SensorPanel(wx.Panel):
                           size=size)
         
         self._sensor_id = sensor_id
-        #self.SetAlignment(wx.ALIGN_LEFT)
+
         if sensor_id in COMPLETE_SENSORS:
             self._sensor_name = SENSOR_NAMES[sensor_id]
         else:
             self._sensor_name = "???"
+
         self._checkbox = wx.CheckBox(self, -1, self._sensor_name, size=(45,20))
         self._sensor_enabled = False
         self._sensor_recording = False  ## Currently unused
         self._quality = -1 ## Recordin quality
-        #self.do_layout()
         
     @property
     def sensor_id(self):
@@ -320,7 +321,7 @@ class UserPanel(ManagerPanel):
         self.sensor_panel.Bind(wx.EVT_ERASE_BACKGROUND, self.on_erase_background)
         
         # Creates the sensors and adds them to the sensor panel
-        sensors = [SensorPanel(self.sensor_panel, x) for x in COMPLETE_SENSORS]
+        sensors = [SensorPanel2(self.sensor_panel, x) for x in COMPLETE_SENSORS]
         self.sensors = tuple(sensors)
         self.SetSize(img.GetSize())
     
@@ -352,12 +353,8 @@ class UserPanel(ManagerPanel):
             for sensor in self.sensors:
                 sensor.quality = data[sensor[sensor.sensor_id]]
             
-            #for sensor in variables.COMPLETE_SENSORS:
-            #    name = variables.SENSOR_NAMES[sensor]
-            #   print "   %s : %d" % (name, data[sensor])
               
     def update_quality(self, data):
-        #print ".... SENSOR QUALITY RECEIVED: %s" % data
         if data != self._sensor_quality:
             self._sensor_quality = data
             
@@ -366,7 +363,7 @@ class UserPanel(ManagerPanel):
             
             for sensor in variables.COMPLETE_SENSORS:
                 name = variables.SENSOR_NAMES[sensor]
-                print "   %s : %d" % (name, data[sensor])
+
         self.sensory_quality = data
 
     
@@ -377,7 +374,9 @@ class UserPanel(ManagerPanel):
         #bsizer.Add(self.user_lbl)
         
         for i in self.sensors:
-            i.SetPosition(SENSOR_POSITIONS[i.sensor_id])
+            i.SetSize((30,30))
+            pos = tuple([x - 15 for x in SENSOR_POSITIONS[i.sensor_id]])
+            i.SetPosition(pos)
         
         sizer = wx.BoxSizer(wx.VERTICAL)        
         sizer1 = wx.BoxSizer(wx.VERTICAL)

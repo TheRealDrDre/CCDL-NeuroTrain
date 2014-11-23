@@ -5,6 +5,11 @@
 ## --------------------------------------------------------------- ##
 ## Defines a few widgets that record EEG data during a session.
 ## --------------------------------------------------------------- ##
+## TODOs
+##
+##   1. Add a way to save sensor quality as well as sensor data
+##   3. Add dialog error message when file already exists
+## --------------------------------------------------------------- ##
 
 from .gui import ManagerPanel
 import core.ccdl as ccdl
@@ -13,6 +18,7 @@ import os
 import time
 import threading 
 import wx
+import traceback
 import numpy as np
 
 wildcard = "EEG raw data (*.eeg)|*.eeg|"     \
@@ -228,6 +234,8 @@ class TimedSessionRecorder(ManagerPanel):
         # process the data.
         if dlg.ShowModal() == wx.ID_OK:
             self.filename = dlg.GetPath()
+            print dlg.GetPath()
+            print self.filename
 
         dlg.Destroy()
         self.update_interface()
@@ -250,13 +258,20 @@ class TimedSessionRecorder(ManagerPanel):
     @filename.setter
     def filename(self, name):
         if name is not None:
+            print("Setting new filename to : %s" % name)
             try:
                 self.init_file( name )
                 self._filename = name
                 self._file_lbl.SetLabel(name)
-            except Exception, e:
-                # Should show some dialog here
-                pass
+                
+            except Exception as e:
+                dlg = wx.MessageDialog(self, "%s" % traceback.format_exc(),
+                               'Cannot save on file',
+                               wx.OK | wx.ICON_INFORMATION
+                               #wx.YES_NO | wx.NO_DEFAULT | wx.CANCEL | wx.ICON_INFORMATION
+                               )
+                dlg.ShowModal()
+                dlg.Destroy()
         else:
             self._filename = None
             self.file_open = False
@@ -280,7 +295,7 @@ class TimedSessionRecorder(ManagerPanel):
         self.file_open = True
         for channel in var.CHANNELS[: -1]:
             self.file.write( "%s\t" % var.CHANNEL_NAMES[channel] )
-        self.file.write( "%s\n" % var.CHANNEL_NAMES[-1] )
+        self.file.write( "%s\n" % var.CHANNEL_NAMES[var.CHANNELS[-1]] )
         
     
     def save_sensor_data(self, data):

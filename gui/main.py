@@ -12,7 +12,6 @@ import core.variables as variables
 from ctypes import *
 from .gui import *
 from .recording import TimedSessionRecorder
-from core.variables import *
 from core.manager import EmotivManager, ManagerWrapper
 
 class NeuroTrainFrame(wx.Frame):
