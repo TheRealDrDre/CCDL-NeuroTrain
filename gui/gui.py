@@ -421,7 +421,6 @@ class UserPanel(ManagerPanel):
     def set_all_enabled(self, bool):
         """Enables or disables all components"""
         if bool:
-            self.user_lbl.Enable()
             for i in self.sensors:
                 i.Enable()
             for c in self.all_components:
