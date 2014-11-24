@@ -2,6 +2,7 @@
 
 
 import wx
+import wx.lib.agw.peakmeter as pm
 import core.ccdl as ccdl
 from core.variables import *
 
@@ -10,6 +11,8 @@ class SingleChannelVisualizer( wx.Panel ):
         wx.Panel.__init__(self, parent, -1,
                           style=wx.NO_FULL_REPAINT_ON_RESIZE,
                           size=size)
+        self.meter = pm.PeakMeterCtrl(self, wx.ID_ANY, style=wx.SIMPLE_BORDER,
+                                      agwStyle=PM.PM_VERTICAL)
 
 class MultiChannelVisualizer(wx.Panel):
     pass

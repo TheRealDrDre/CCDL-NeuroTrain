@@ -52,11 +52,11 @@ class NeuroTrainFrame(wx.Frame):
         metabox.Add(box1, 0, wx.ALIGN_CENTER, 10)
         
         box2 = wx.BoxSizer(wx.VERTICAL)
-        box2.Add(self.rec_panel, 0, wx.TOP)
-        box2.Add(wx.Panel(self, -1), 1, wx.EXPAND, 1)
+        box2.Add(self.rec_panel, 0, wx.ALIGN_TOP)
+        box2.Add(wx.Panel(self, wx.ID_ANY), 1, wx.EXPAND, 1)
         
-        metabox.Add(box2, 0, wx.RIGHT)
-        metabox.Add(wx.Panel(self, -1), 1, wx.EXPAND, 1)
+        metabox.Add(box2, 0, wx.RIGHT|wx.EXPAND)
+        metabox.Add(wx.Panel(self, wx.ID_ANY), 1, wx.EXPAND, 1)
         
         self.SetSizer(metabox)
         
