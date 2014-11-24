@@ -64,7 +64,7 @@ class EmotivManager(object):
         self._connected = False # Whether connected or not
         self._has_user = False  # Whether there is a user or not
         self._monitoring = False
-        self._monitor_interval = 0.1
+        self._monitor_interval = 0.065
         self._headset_connected = False
         
         self._listeners = dict(zip(ccdl.EVENTS, [[] for i in ccdl.EVENTS]))
@@ -221,6 +221,7 @@ class EmotivManager(object):
             else:
                 # This means we are stopping monitorng
                 self._monitoring = False
+                self.headset_connected = False
         else:
             if bool:
                 self._monitoring = True
@@ -245,7 +246,7 @@ class EmotivManager(object):
             
             # Retrieves the next event
             state = self.edk.EE_EngineGetNextEvent(self.eEvent)
-            print "[%d] Checked state: %s %s" % (counter, self.has_user, state)
+            #print "[%d] Checked state: %s %s" % (counter, self.has_user, state)
 
             if state == variables.EDK_OK:
                 # If we received an event, it means that we must have an user
@@ -269,7 +270,7 @@ class EmotivManager(object):
                     self.edk.EE_DataAcquisitionEnable(self.userID,True)
                     
                 elif eventType == variables.EE_User_Removed:
-                    print "[%d] User removed" % counter
+                    #print "[%d] User removed" % counter
                     # This never happens...
                     self.has_user = False
                     
@@ -376,7 +377,6 @@ class EmotivManager(object):
         
     def store_sensor_quality(self):
         """Reads the sensor quality"""
-        print("   REading sensor quality")
         Q = {}
         for sensor in variables.COMPLETE_SENSORS:
             Q[sensor] = self.edk.ES_GetContactQuality(self.eState, sensor);
@@ -423,11 +423,12 @@ class EmotivManager(object):
         """Sets the current strength of the wireless signal to VAL"""
         if val != self._wireless_signal:
             if self._wireless_signal == variables.EDK_NO_SIGNAL:
+                self._wireless_signal = val
                 self.has_user = True
                 self.headset_connected = True
-            self._wireless_signal = val
             
             if val == variables.EDK_NO_SIGNAL:
+                self._wireless_signal = val
                 self.has_user = False
                 self.headset_connected = False
             
@@ -444,7 +445,6 @@ class EmotivManager(object):
     def sensor_quality(self, data):
         """Changes the sensor quality values"""
         self._sensor_quality = data
-        print("..... SENSOR QUALITY BROADCASTED")
         self.execute_event_functions( ccdl.SENSOR_QUALITY_EVENT, data )
     
     @property
@@ -467,7 +467,6 @@ class EmotivManager(object):
         if id in ccdl.EVENTS:
             if type(obj) in (types.FunctionType, types.MethodType):
                 if obj not in self._listeners[id]:
-                    #print "Adding listener %s" % obj
                     self._listeners[id].append(obj)
             else:
                 
@@ -480,9 +479,6 @@ class EmotivManager(object):
     def execute_event_functions(self, event_id, arg):
         """Executes all the listener functions associated with a given
         event ID"""
-        for i in self._listeners[event_id]:
-            print event_id, i
-        #print len(self._listeners[event_id])
         if event_id in ccdl.EVENTS:
             for func in self._listeners[event_id]:
                 func(arg)
@@ -538,7 +534,6 @@ class ManagerWrapper(object):
     
     @monitored_events.setter
     def monitored_events(self, event_ids):
-        print "Setting the monitoring events %s for object %s" % (event_ids, self)
         self._monitored_events = tuple(event_ids)
         if self.manager is not None:
             for i in event_ids:

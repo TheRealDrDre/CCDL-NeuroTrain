@@ -7,6 +7,8 @@ BETA_BAND = (13, 18)
 from core.variables import *
 from scipy.signal import welch
 
+
+
 class SpectrumAnalyzer(object):
     """A class that analyzes spectral activity in EEG time series"""
     def __init__(self, band=ALPHA_BAND, channels=SENSORS, sampling_frequency=128):

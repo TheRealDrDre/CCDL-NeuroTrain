@@ -44,14 +44,19 @@ class NeuroTrainFrame(wx.Frame):
         hbox = wx.BoxSizer(wx.HORIZONTAL)
         hbox.Add(self.user_panel)
         
-        box = wx.BoxSizer(wx.VERTICAL)
-        box.Add(self.connect_panel, 1, wx.HORIZONTAL|wx.EXPAND, 0)
-        box.Add(hbox, 1, wx.ALL | wx.EXPAND, 0)
+        box1 = wx.BoxSizer(wx.VERTICAL)
+        box1.Add(self.connect_panel, 1, wx.HORIZONTAL|wx.EXPAND, 0)
+        box1.Add(hbox, 1, wx.ALL | wx.EXPAND, 0)
         
         metabox = wx.BoxSizer(wx.HORIZONTAL)
-        metabox.Add(box, wx.ALIGN_CENTER, 10)
+        metabox.Add(box1, 0, wx.ALIGN_CENTER, 10)
         
-        metabox.Add(self.rec_panel, wx.ALIGN_CENTER, 10)
+        box2 = wx.BoxSizer(wx.VERTICAL)
+        box2.Add(self.rec_panel, 0, wx.TOP)
+        box2.Add(wx.Panel(self, -1), 1, wx.EXPAND, 1)
+        
+        metabox.Add(box2, 0, wx.RIGHT)
+        metabox.Add(wx.Panel(self, -1), 1, wx.EXPAND, 1)
         
         self.SetSizer(metabox)
         

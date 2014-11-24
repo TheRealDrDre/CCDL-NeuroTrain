@@ -67,7 +67,7 @@ class ConnectPanel(ManagerPanel):
         self.connect_btn = wx.Button(self, 12, "Connect to the Headset", (20, 20))
         self.disconnect_btn = wx.Button(self, 11, "Disconnect from Headset", (20, 20))
                 
-        spin = wx.SpinCtrlDouble(self, -1, min=0.05, max=0.5, inc=0.025,
+        spin = wx.SpinCtrlDouble(self, -1, min=0.050, max=0.500, inc=0.005,
                                  size=(75, 25))
         
         
@@ -156,22 +156,17 @@ class ConnectPanel(ManagerPanel):
 
     def on_connect(self, event):
         """Handles the connection events"""
-        print "on_connect %s" % event.GetId()
         if (event.GetId() == 12):
             try:
                 mngr = self.manager
                 mngr.connect()
                 
-                print mngr.monitoring
                 mngr.monitoring = True
-                print "...Set"
-                print mngr.monitoring
+                
             except Exception as e:
                 dlg = wx.MessageDialog(self, "%s" % traceback.format_exc(),
                                'Error While Connecting',
-                               wx.OK | wx.ICON_INFORMATION
-                               #wx.YES_NO | wx.NO_DEFAULT | wx.CANCEL | wx.ICON_INFORMATION
-                               )
+                               wx.OK | wx.ICON_INFORMATION)
                 dlg.ShowModal()
                 dlg.Destroy()
                 
@@ -213,7 +208,7 @@ class UserPanel(ManagerPanel):
         
         # Gauges
         self._battery_gge = wx.Gauge(self, -1, 5, size=(100, 20))
-        self._wireless_gge= wx.Gauge(self, -1, 2, size=(100, 20))
+        self._wireless_gge= wx.Gauge(self, -1, 3, size=(100, 20))
         
         # Text info:
         self._sampling_rate_txt = wx.StaticText(self, -1, "128", size=(100, 20))
@@ -268,7 +263,6 @@ class UserPanel(ManagerPanel):
     @sensor_quality.setter
     def sensor_quality(self, data):
         """Changes the sensor quality array values"""
-        print "Sensory quality setter: %s" % data
         if data != self._sensor_quality:
             self._sensor_quality = data
             
@@ -293,7 +287,6 @@ class UserPanel(ManagerPanel):
         """Lays out the components"""
         box = wx.StaticBox(self, -1, "Headset")
         bsizer = wx.StaticBoxSizer(box, wx.VERTICAL)
-        #bsizer.Add(self.user_lbl)
         
         for i in self.sensors:
             i.SetSize((30,30))
@@ -359,29 +352,30 @@ class UserPanel(ManagerPanel):
         self._battery_gge.SetValue(mgr.battery_level)
         self._wireless_gge.SetValue(mgr.wireless_signal)
         self._sampling_rate_txt.SetLabel("128")
-        self._num_channels_txt.SetLabel("18")   
+        self._num_channels_txt.SetLabel("18")
+        #self.Refresh()
                     
     
     def refresh(self, arg=None):  # ARG argument is unused
         """Updates the components based on the manager's state"""
-        has_user = self.manager.has_user
-        if has_user is not self.manager_state:
-            self.manager_state = has_user
-            if self.manager.has_user:
-                self.update_gauges()
-                for c in self.all_components:
-                    c.Enable()
+        #has_user = self.manager.has_user
+        #if has_user is not self.manager_state:
+        #   self.manager_state = has_user
+        if self.manager.headset_connected:
+            self.update_gauges()
+            for c in self.all_components:
+                c.Enable()
                 
-                #self.user_lbl.SetLabel("Headset Connected")
-                self.set_all_enabled(True)
-                self.background_bitmap = self.enabled_img
+            self.set_all_enabled(True)
+            self.background_bitmap = self.enabled_img
 
-            else:
-                self.set_all_enabled(False)
-                self.background_bitmap = self.disabled_img
-                # A few fix-ups:
-                self._sampling_rate_txt.SetLabel("--")
-                self._num_channels_txt.SetLabel("--")
-                self._battery_gge.SetValue(0)
-                self._wireless_gge.SetValue(0)
-            self.Update()
+        else:
+            self.set_all_enabled(False)
+            self.background_bitmap = self.disabled_img
+            # A few fix-ups:
+            self._sampling_rate_txt.SetLabel("--")
+            self._num_channels_txt.SetLabel("--")
+            self._battery_gge.SetValue(0)
+            self._wireless_gge.SetValue(0)
+        
+        self.Update()

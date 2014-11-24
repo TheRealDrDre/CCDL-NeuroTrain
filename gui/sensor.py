@@ -6,7 +6,6 @@ import wx
 import core.ccdl as ccdl
 from core.variables import *
 
-
 class SensorPanel( wx.Panel ):
     """A small widget that displays the state of a sensor"""
     BACKGROUNDS  = {-1: wx.Colour(180, 180, 180), # grey
@@ -70,7 +69,6 @@ class SensorPanel( wx.Panel ):
         if (self._quality != val):
             self._quality = val
             self.Refresh()
-            print "%s, %d" % (self.sensor_name, self.quality)
                 
                 
     def OnPaint(self, event):

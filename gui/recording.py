@@ -38,6 +38,8 @@ class TimedSessionRecorder(ManagerPanel):
                               manager_state=True,
                               monitored_events=(ccdl.HEADSET_FOUND_EVENT,))
         self.manager.add_listener(ccdl.SAMPLING_EVENT, self.save_sensor_data)
+        self.manager.add_listener(ccdl.SENSOR_QUALITY_EVENT,
+                                  self.save_sensor_quality_data)
         
     def refresh(self, param):
         """Updates the interface when the user is updated"""
@@ -53,7 +55,9 @@ class TimedSessionRecorder(ManagerPanel):
         self._time_left = self.session_duration
         self.samples_collected = 0
         self.recording = False
-
+        self.sensor_quality = dict(zip(var.COMPLETE_SENSORS,
+                                   [0] * len(var.COMPLETE_SENSORS)))
+        
         self._filename_lbl = wx.StaticText(self, wx.ID_ANY, "Data file:")
         
         self._file_lbl = wx.StaticText(self, wx.ID_ANY, "[No file]", size=(100, 25), 
@@ -186,7 +190,6 @@ class TimedSessionRecorder(ManagerPanel):
         
     def timer(self):
         """Runs a simple timer that collects data for given time"""
-        print("Started timer function")
         while self.recording and self.time_left > 0:
             time.sleep(1)   # Sleeps one second
             self.time_left -= 1
@@ -277,7 +280,6 @@ class TimedSessionRecorder(ManagerPanel):
         @param  name  the new path where data is saved
         """
         if name is not None:
-            print("Setting new filename to : %s" % name)
             try:
                 self.init_file( name )
                 self._filename = name
@@ -313,9 +315,11 @@ class TimedSessionRecorder(ManagerPanel):
         """Inits the file sink"""
         self.file = file(name, "w")
         self.file_open = True
-        for channel in var.CHANNELS[: -1]:
+        for channel in var.CHANNELS:
             self.file.write( "%s\t" % var.CHANNEL_NAMES[channel] )
-        self.file.write( "%s\n" % var.CHANNEL_NAMES[var.CHANNELS[-1]] )
+        for sensor in var.COMPLETE_SENSORS[:-1]:
+            self.file.write( "%s_Q\t" % var.SENSOR_NAMES[sensor] )
+        self.file.write( "%s_Q\n" % var.SENSOR_NAMES[var.COMPLETE_SENSORS[-1]] )
         
     
     def save_sensor_data(self, data):
@@ -326,8 +330,19 @@ class TimedSessionRecorder(ManagerPanel):
         if self.file_open and self.recording:
             n_samples, n_channels = data.shape
             for s in xrange(n_samples):
-                for c in xrange(n_channels - 1):
+                for c in xrange(n_channels):
                     self.file.write("%f\t" % data[s, c])
-                self.file.write("%f\n" % data[s, n_channels - 1])
+                for sensor in var.COMPLETE_SENSORS[: -1]:
+                    self.file.write("%d\t" % self.sensor_quality[sensor])
+                self.file.write("%d\n" % self.sensor_quality[var.COMPLETE_SENSORS[-1]])
             self.samples_collected += n_samples
         
+    def save_sensor_quality_data(self, qdata):
+        """
+        Saves sensor quality data on an inner dictionary
+        (the data will be saved by the 'save_sensor_data' loop)
+        @param  qdata  the sensor quality data dictionary
+        """
+        if self.recording:
+            self.sensor_quality = qdata
+    
