@@ -51,7 +51,7 @@ class TimedSessionRecorder(ManagerPanel):
         self.file_open = False
         self._filename = None
         self.file = None
-        self.session_duration = 60
+        self.session_duration = 300
         self._time_left = self.session_duration
         self.samples_collected = 0
         self.recording = False
@@ -69,7 +69,7 @@ class TimedSessionRecorder(ManagerPanel):
         self._timer_lbl = wx.StaticText(self, wx.ID_ANY, "Session Duration (Mins):",
                                         size=(150, 25))
         
-        self._timer_spn = wx.SpinCtrl(self, -1, size=(10,25),
+        self._timer_spn = wx.SpinCtrl(self, -1, size=(50,25),
                                         style=wx.SP_VERTICAL)
         
         self._start_btn = wx.Button(self, TimedSessionRecorder.START_RECORDING,
@@ -84,7 +84,7 @@ class TimedSessionRecorder(ManagerPanel):
         self._timeleft_lbl.SetFont( wx.Font(40, family=wx.FONTFAMILY_DEFAULT,
                                             style=wx.FONTSTYLE_NORMAL, weight=wx.BOLD))
         self._timer_spn.SetRange(1, 100)
-        self._timer_spn.SetValue(1)
+        self._timer_spn.SetValue(5)
         
         self.Bind(wx.EVT_SPINCTRL, self.on_spin, self._timer_spn)
         self.Bind(wx.EVT_BUTTON, self.on_start_button, self._start_btn)
@@ -197,7 +197,7 @@ class TimedSessionRecorder(ManagerPanel):
         # When the loop ends, warn the user
         # that session has terminated
         dlg = wx.MessageDialog(self,
-                               """%d Sample were saved on file %s""" % (self.samples_collected, self.filename),
+                               """%d Samples were saved on file %s""" % (self.samples_collected, self.filename),
                                "Recording Session Terminated",
                                wx.OK | wx.ICON_INFORMATION
                                )
@@ -211,6 +211,7 @@ class TimedSessionRecorder(ManagerPanel):
         self.file.close()
         self.file_open = False
         self.filename = None
+        self.samples_collected = 0
         self.update_interface()
     
     def on_start_button(self, event):

@@ -64,7 +64,7 @@ class EmotivManager(object):
         self._connected = False # Whether connected or not
         self._has_user = False  # Whether there is a user or not
         self._monitoring = False
-        self._monitor_interval = 0.065
+        self._monitor_interval = 0.080
         self._headset_connected = False
         
         self._listeners = dict(zip(ccdl.EVENTS, [[] for i in ccdl.EVENTS]))
