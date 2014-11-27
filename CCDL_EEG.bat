@@ -1,1 +1,1 @@
-pythonw.exe NeuroTrain.py
+start pythonw.exe NeuroTrain.py

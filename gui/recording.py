@@ -193,7 +193,10 @@ class TimedSessionRecorder(ManagerPanel):
         while self.recording and self.time_left > 0:
             time.sleep(1)   # Sleeps one second
             self.time_left -= 1
-        
+
+        # Stops recording
+        self.recording = False
+
         # When the loop ends, warn the user
         # that session has terminated
         dlg = wx.MessageDialog(self,
@@ -204,10 +207,11 @@ class TimedSessionRecorder(ManagerPanel):
         dlg.ShowModal()
         dlg.Destroy()
         
-        # Automatically resets the counter, closes the files,
-        # and updates the user interface
+        # When the user finally responds, updates the interface,
+        # resets the counter, closes the files,
+        # blocks recording, and resets the samples
+        
         self.time_left = self.session_duration
-        self.recording = False
         self.file.close()
         self.file_open = False
         self.filename = None
