@@ -12,6 +12,7 @@ import core.variables as variables
 from ctypes import *
 from .gui import *
 from .recording import TimedSessionRecorder
+from .visualizer import SingleChannelVisualizer
 from core.manager import EmotivManager, ManagerWrapper
 
 __all__ = [ "NeuroTrainFrame" ]
@@ -37,6 +38,7 @@ class NeuroTrainFrame(wx.Frame):
         self.connect_panel = ConnectPanel(self, self.manager)
         self.user_panel = UserPanel(self, self.manager)
         self.rec_panel = TimedSessionRecorder(self, self.manager)
+        self.visualizer = SingleChannelVisualizer(self, self.manager)
         
         
     def do_layout(self):
@@ -53,6 +55,7 @@ class NeuroTrainFrame(wx.Frame):
         
         box2 = wx.BoxSizer(wx.VERTICAL)
         box2.Add(self.rec_panel, 0, wx.ALIGN_TOP)
+        box2.Add(self.visualizer, 0, wx.ALIGN_TOP | wx.HORIZONTAL | wx.EXPAND)
         box2.Add(wx.Panel(self, wx.ID_ANY), 1, wx.EXPAND, 1)
         
         metabox.Add(box2, 0, wx.RIGHT|wx.EXPAND)

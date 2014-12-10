@@ -14,12 +14,12 @@ from .sensor import SensorPanel
 
 __all__ = ["ManagerPanel", "ConnectPanel", "UserPanel"]
 
-SENSOR_POSITIONS = {ED_CMS : (37, 233), ED_DRL : (274, 233),
-                    ED_AF3 : (85, 62), ED_F7 : (37, 113), ED_F3 : (118, 109),
+SENSOR_POSITIONS = {ED_CMS : (38, 234), ED_DRL : (274, 234),
+                    ED_AF3 : (86, 64), ED_F7 : (38, 115), ED_F3 : (118, 109),
                     ED_FC5 : (67, 146), ED_T7 : (19, 190), ED_P7 : (70, 287),
                     ED_O1 : (114, 336), ED_O2 : (196, 336), ED_P8 : (241, 287),
                     ED_T8 : (291, 190), ED_FC6 : (243, 146), ED_F4 : (192, 109),
-                    ED_F8 : (274, 113), ED_AF4 : (224, 62)}
+                    ED_F8 : (274, 115), ED_AF4 : (226, 64)}
 
 class ManagerPanel(wx.Panel, ManagerWrapper):
     """A subclass for all panels that wraps around an Emotiv Manager"""
