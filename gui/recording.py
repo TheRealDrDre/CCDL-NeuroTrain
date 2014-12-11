@@ -122,7 +122,6 @@ class TimedSessionRecorder(ManagerPanel):
         box2.Add(row3, 1, wx.ALL|wx.EXPAND, 10)
     
         self.SetSizerAndFit(box2)
-        
         self.update_interface()
     
     def on_spin(self, event):
