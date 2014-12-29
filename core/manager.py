@@ -311,8 +311,9 @@ class EmotivManager(object):
                     #print "\tSignal: %s" % (self.wireless_signal)
                 
                     # Calls all the functions responsible for collecting data.
-                    self.store_sensor_data()
-                    self.store_sensor_quality()
+                    self.store_sensor_data()     # Sensor data
+                    self.store_sensor_quality()  # Contact quality
+                    self.store_state_data()      # States (blinks, winks, etc.)
                                     
                 else:
                     print "[%d] Other event: %d" % (counter, eventType)
@@ -383,10 +384,19 @@ class EmotivManager(object):
             
         self.sensor_quality = Q
 
+
+    def store_state_data(self):
+        """Reads the EmoState data (blinks, winks, etc.)"""
+        blink = self.edk.ES_ExpressivIsBlink(self.eState)
+        lwink = self.edk.ES_ExpressivIsLeftWink(self.eState)
+        rwink = self.edk.ES_ExpressivIsRightWink(self.eState)
+
+
     @property
     def has_user(self):
         """Whether a user (a headset) is connected or not"""
         return self._has_user
+    
     
     @has_user.setter
     def has_user(self, val):
@@ -401,6 +411,7 @@ class EmotivManager(object):
             # here should raise some exceptions --- cannot
             # change the user if we are not event connected!
             pass
+    
     
     @property    
     def battery_level(self):

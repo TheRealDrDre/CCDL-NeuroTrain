@@ -14,7 +14,7 @@ import time
 class SingleChannelVisualizer( gui.ManagerPanel ):
     def __init__(self, parent, manager, size=(50, 25)):
         # Parameters for periodogram.
-        self.length = 4       # Length of the time series to analyze
+        self.length = 8       # Length of the time series to analyze
         self.window = 1       # Moving window for periodogram
         self.overlap = 0.5    # Overlap between moving windows in periodogram
         self.sampling = 128   # Internal sampling rate (fixed, for now)
