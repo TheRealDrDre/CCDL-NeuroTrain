@@ -72,6 +72,7 @@ class EmotivManager(object):
         self._sensor_quality = dict(zip(variables.COMPLETE_SENSORS,
                                     [0] * len(variables.COMPLETE_SENSORS)))
         
+        self._state_data = np.zeros((0, 6), order="C", dtype=np.double)
         self._battery_level = 0
         self._wireless_signal = variables.EDK_NO_SIGNAL
         
@@ -107,6 +108,10 @@ class EmotivManager(object):
         self.datarate        = c_uint(0)
         self.option      = c_int(0)
         self.state     = c_int(0)
+        
+        ## Additional data needed to make sense of blinks
+        self.left_eyelid = c_float(1)
+        self.right_eyelid = c_float(1)
     
     def load_edk(self):
         """Loads the EDK.dll library"""
@@ -311,9 +316,9 @@ class EmotivManager(object):
                     #print "\tSignal: %s" % (self.wireless_signal)
                 
                     # Calls all the functions responsible for collecting data.
-                    self.store_sensor_data()     # Sensor data
                     self.store_sensor_quality()  # Contact quality
                     self.store_state_data()      # States (blinks, winks, etc.)
+                    self.store_sensor_data()     # Sensor data
                                     
                 else:
                     print "[%d] Other event: %d" % (counter, eventType)
@@ -345,6 +350,9 @@ class EmotivManager(object):
             self._headset_connected = boolean
             self.execute_event_functions( ccdl.HEADSET_FOUND_EVENT, boolean )
     
+    ## ----------------------------------------------------------- ##
+    ## STORING AND BROADCASTING EEG DATA
+    ## ----------------------------------------------------------- ##
 
     ## In the newest model, the monitor contiuously acquires data
     ## and stores it in an internal table, which is dispatched to
@@ -387,9 +395,23 @@ class EmotivManager(object):
 
     def store_state_data(self):
         """Reads the EmoState data (blinks, winks, etc.)"""
-        blink = self.edk.ES_ExpressivIsBlink(self.eState)
-        lwink = self.edk.ES_ExpressivIsLeftWink(self.eState)
-        rwink = self.edk.ES_ExpressivIsRightWink(self.eState)
+        # Gets the data 
+        blink = self.edk.ES_ExpressivIsBlink(self.eState)      # int
+        lwink = self.edk.ES_ExpressivIsLeftWink(self.eState)   # int
+        rwink = self.edk.ES_ExpressivIsRightWink(self.eState)  # int
+        eopen = self.edk.ES_ExpressivIsEyesOpen(self.eState)   # int
+        
+        # these are two floats
+        self.edk.ES_ExpressivGetEyelidState(self.eState,
+                                            pointer(self.left_eyelid),
+                                            pointer(self.right_eyelid))
+        
+        # Create the dictionary and set it.
+        S = {"Blink" : blink, "LeftWink" : lwink,
+             "RightWink" : rwink, "EyesOpen" : eopen,
+             "LeftEyeLid" : self.left_eyelid,
+             "RightEyelid" : self.right_eyelid}
+        self.state_data = S
 
 
     @property
@@ -467,6 +489,17 @@ class EmotivManager(object):
         """Updates the sensor data"""
         self._sensor_data = data
         self.execute_event_functions( ccdl.SAMPLING_EVENT, data)
+    
+    @property
+    def state_data(self):
+        """Returns the EmoState data"""
+        return self._state_data
+    
+    @state_data.setter
+    def state_data(self, data):
+        """Returns the EmoState data"""
+        self._state_data = data
+        self.execute_event_functions( ccdl.EMOSTATE_EVENT, data)
     
     # ------------------------------------------------------------- #
     # EVENTS MODEL

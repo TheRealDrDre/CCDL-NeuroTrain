@@ -31,15 +31,20 @@ class TimedSessionRecorder(ManagerPanel):
     SET_FILENAME = 2001      # ID of the Filename button
     START_RECORDING = 2002   # ID of the Recording button
     ABORT_RECORDING = 2003   # ID of the abort recording button
+    EMOSTATE_FIELDS = ("Blink", "LeftWink", "RightWink",
+                       "EyesOpen", "LeftEyeLid","RightEyelid")
     
     def __init__(self, parent, manager):
         """Inits a new Timed Session Recoding Panel"""
         ManagerPanel.__init__(self, parent, manager,
                               manager_state=True,
                               monitored_events=(ccdl.HEADSET_FOUND_EVENT,))
-        self.manager.add_listener(ccdl.SAMPLING_EVENT, self.save_sensor_data)
+        self.manager.add_listener(ccdl.SAMPLING_EVENT,
+                                  self.save_sensor_data)
         self.manager.add_listener(ccdl.SENSOR_QUALITY_EVENT,
                                   self.save_sensor_quality_data)
+        self.manager.add_listener(ccdl.EMOSTATE_EVENT,
+                                  self.save_emostate_data)
         
     def refresh(self, param):
         """Updates the interface when the user is updated"""
@@ -57,6 +62,7 @@ class TimedSessionRecorder(ManagerPanel):
         self.recording = False
         self.sensor_quality = dict(zip(var.COMPLETE_SENSORS,
                                    [0] * len(var.COMPLETE_SENSORS)))
+        self.emostate_data = np.array((0, 6))
         
         self._filename_lbl = wx.StaticText(self, wx.ID_ANY, "Data file:")
         
@@ -321,9 +327,11 @@ class TimedSessionRecorder(ManagerPanel):
         self.file_open = True
         for channel in var.CHANNELS:
             self.file.write( "%s\t" % var.CHANNEL_NAMES[channel] )
-        for sensor in var.COMPLETE_SENSORS[:-1]:
+        for sensor in var.COMPLETE_SENSORS:
             self.file.write( "%s_Q\t" % var.SENSOR_NAMES[sensor] )
-        self.file.write( "%s_Q\n" % var.SENSOR_NAMES[var.COMPLETE_SENSORS[-1]] )
+        for field in self.EMOSTATE_FIELDS[:-1]:
+            self.file.write( "%s\t" % field)
+        self.file.write( "%s\n" % self.EMOSTATE_FIELDS[-1] )
         
     
     def save_sensor_data(self, data):
@@ -336,9 +344,13 @@ class TimedSessionRecorder(ManagerPanel):
             for s in xrange(n_samples):
                 for c in xrange(n_channels):
                     self.file.write("%f\t" % data[s, c])
-                for sensor in var.COMPLETE_SENSORS[: -1]:
+                for sensor in var.COMPLETE_SENSORS:
                     self.file.write("%d\t" % self.sensor_quality[sensor])
-                self.file.write("%d\n" % self.sensor_quality[var.COMPLETE_SENSORS[-1]])
+                for field in self.EMOSTATE_FIELDS[0:4]:
+                    self.file.write("%d\t" % self.emostate_data[field])
+                for field in self.EMOSTATE_FIELDS[4:-1]:
+                    self.file.write("%0.3f\t" % self.emostate_data[field].value)
+                self.file.write("%0.3f\n" % self.emostate_data[self.EMOSTATE_FIELDS[-1]].value)
             self.samples_collected += n_samples
         
     def save_sensor_quality_data(self, qdata):
@@ -350,3 +362,7 @@ class TimedSessionRecorder(ManagerPanel):
         if self.recording:
             self.sensor_quality = qdata
     
+    def save_emostate_data(self, edata):
+        """Saves emostate data"""
+        if self.recording:
+            self.emostate_data = edata
