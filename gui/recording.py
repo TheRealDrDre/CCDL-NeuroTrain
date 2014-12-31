@@ -7,8 +7,6 @@
 ## --------------------------------------------------------------- ##
 ## TODOs
 ##
-##   1. Add a way to save sensor quality as well as sensor data
-##   2. Add dialog error message when file already exists
 ## --------------------------------------------------------------- ##
 
 from .gui import ManagerPanel
@@ -62,7 +60,7 @@ class TimedSessionRecorder(ManagerPanel):
         self.recording = False
         self.sensor_quality = dict(zip(var.COMPLETE_SENSORS,
                                    [0] * len(var.COMPLETE_SENSORS)))
-        self.emostate_data = np.array((0, 6))
+        self.emostate_data = np.array((0, 6))    
         
         self._filename_lbl = wx.StaticText(self, wx.ID_ANY, "Data file:")
         
